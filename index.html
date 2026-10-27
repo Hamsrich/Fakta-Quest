@@ -1,0 +1,1481 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0e1222">
+<title>Komunikasi Quest</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Nunito:wght@500;700;800&family=Noto+Sans+SC:wght@500;700&display=swap">
+<style>
+/* Layout: night-time adventure map. Single dark world on purpose (a game screen), every colour set explicitly.
+   Gold = reward, emerald = correct, ruby = damage, sky = information, violet = rare. */
+:root{
+  color-scheme:dark;
+  --night:#0e1222; --night2:#151a2e; --panel:#1b2140; --panel2:#232a50; --line:#33406e;
+  --ink:#eef0ff; --muted:#a3abd6; --dim:#6e77a8;
+  --gold:#ffd166; --gold2:#f4a73b; --emerald:#45d48a; --ruby:#ff5c7a; --sky:#5cc8ff; --violet:#b58cff; --epic:#ff9f43;
+  --f-pixel:"Pixelify Sans","Noto Sans SC",system-ui,sans-serif;
+  --f-body:"Nunito","Noto Sans SC",system-ui,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{background:var(--night);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;margin:0;
+  background-image:radial-gradient(1px 1px at 12% 18%,#ffffff55 50%,transparent 51%),radial-gradient(1px 1px at 72% 9%,#ffffff44 50%,transparent 51%),radial-gradient(1.5px 1.5px at 40% 36%,#ffffff33 50%,transparent 51%),radial-gradient(1px 1px at 88% 52%,#ffffff44 50%,transparent 51%),radial-gradient(1px 1px at 22% 78%,#ffffff33 50%,transparent 51%),linear-gradient(180deg,#0e1222 0%,#141a33 60%,#0e1222 100%);
+  background-attachment:fixed}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:60;background:var(--night)}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.pix{font-family:var(--f-pixel);letter-spacing:.02em}
+img.sprite{image-rendering:pixelated;image-rendering:crisp-edges}
+#app{min-height:100%;display:flex;flex-direction:column}
+.wrap{width:100%;max-width:980px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* header */
+.hud{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:linear-gradient(180deg,var(--night) 70%,transparent);padding-block:10px 14px}
+.hud .row{display:flex;align-items:center;gap:12px}
+.hud .ava{width:44px;height:44px;border-radius:10px;background:var(--panel);border:2px solid var(--line);display:grid;place-items:center;flex:none}
+.hud .ava img{width:36px;height:36px}
+.hud .who{min-width:0;flex:1}
+.hud .name{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hud .title{font-size:12px;color:var(--muted)}
+.xpbar{height:8px;background:var(--panel);border-radius:6px;overflow:hidden;margin-top:4px;border:1px solid var(--line)}
+.xpbar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold2),var(--gold));width:0;transition:width .5s}
+.lvl{font-family:var(--f-pixel);font-size:22px;color:var(--gold);line-height:1;text-align:center}
+.lvl small{display:block;font-size:10px;color:var(--muted);font-family:var(--f-body)}
+.chip{display:inline-flex;align-items:center;gap:5px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:13px;font-weight:700;white-space:nowrap}
+.iconbtn{background:var(--panel);border:1px solid var(--line);border-radius:10px;width:38px;height:38px;display:grid;place-items:center;flex:none}
+.iconbtn svg{width:20px;height:20px}
+
+/* nav */
+.nav{position:sticky;bottom:0;z-index:20;background:var(--night2);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.nav .wrap{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding-block:6px}
+.nav button{background:none;border:0;border-radius:10px;padding:6px 2px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;color:var(--muted)}
+.nav button svg{width:22px;height:22px}
+.nav button[aria-current="page"]{color:var(--gold);background:var(--panel)}
+main{flex:1;padding-block:4px 24px}
+
+/* map */
+.region{margin-bottom:26px}
+.rhead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:6px 0 4px}
+.rhead h2{font-family:var(--f-pixel);font-size:22px;margin:0;color:var(--gold)}
+.rhead span{color:var(--muted);font-size:13px}
+.trail{position:relative}
+.trail svg.path{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.node{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:0;padding:0;width:128px}
+.node .disc{width:68px;height:68px;border-radius:50%;display:grid;place-items:center;background:var(--panel2);border:3px solid var(--line);box-shadow:0 6px 0 #0008;position:relative;transition:transform .15s}
+.node:hover .disc{transform:translateY(-3px)}
+.node .disc img{width:48px;height:48px}
+.node.open .disc{border-color:var(--sky)}
+.node.cleared .disc{border-color:var(--gold)}
+.node.locked{cursor:not-allowed}
+.node.locked .disc{filter:grayscale(1) brightness(.55)}
+.node .lock{position:absolute;right:-4px;bottom:-4px;background:var(--night2);border:2px solid var(--line);border-radius:50%;width:24px;height:24px;display:grid;place-items:center}
+.node .lock svg{width:12px;height:12px}
+.node .label{font-size:12px;font-weight:800;text-align:center;line-height:1.25;background:#0e1222cc;border-radius:6px;padding:2px 6px}
+.node .code{font-family:var(--f-pixel);font-size:11px;color:var(--muted)}
+.stars{display:flex;gap:2px}
+.stars svg{width:14px;height:14px}
+.node.next .disc::after{content:"";position:absolute;inset:-8px;border-radius:50%;border:2px dashed var(--sky);animation:spin 6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.mring{font-size:11px;color:var(--emerald);font-weight:800}
+
+/* panels, modals */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.modal{position:fixed;inset:0;z-index:80;background:#05070fcc;display:grid;place-items:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));overflow-y:auto}
+.modal .box{background:var(--panel);border:2px solid var(--line);border-radius:18px;padding:20px;width:100%;max-width:560px;box-shadow:0 20px 60px #000a;animation:pop .25s ease-out;max-height:100%;overflow-y:auto}
+@keyframes pop{from{transform:scale(.92);opacity:0}}
+.modal h3{font-family:var(--f-pixel);font-size:24px;margin:0 0 6px;color:var(--gold);text-wrap:balance}
+.btn{border:0;border-radius:12px;padding:12px 18px;font-weight:800;font-size:15px;background:var(--gold);color:#2a1a00;box-shadow:0 4px 0 var(--gold2);transition:transform .08s}
+.btn:active{transform:translateY(2px);box-shadow:0 2px 0 var(--gold2)}
+.btn.ghost{background:var(--panel2);color:var(--ink);box-shadow:0 4px 0 #0d1126;border:1px solid var(--line)}
+.btn.danger{background:var(--ruby);color:#2a0010;box-shadow:0 4px 0 #a3243f}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.facts-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.facts-list div{background:var(--night2);border-radius:10px;padding:8px 10px}
+.facts-list b{display:block}
+.facts-list .ok{color:var(--emerald)}
+input[type=email],input[type=password]{width:100%;background:var(--night2);border:2px solid var(--line);border-radius:12px;color:var(--ink);font:inherit;font-size:16px;padding:12px}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tabs button{flex:1;border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:9px;font-weight:800;color:var(--muted)}
+.tabs button[aria-pressed="true"]{color:#2a1a00;background:var(--gold);border-color:var(--gold)}
+input[type=text]{width:100%;background:var(--night2);border:2px solid var(--line);border-radius:12px;color:var(--ink);font:inherit;font-size:16px;padding:12px}
+
+/* battle */
+#battle{position:fixed;inset:0;z-index:50;background:var(--night);overflow-y:auto;display:flex;flex-direction:column}
+#battle[hidden]{display:none}
+.bwrap{max-width:760px;width:100%;margin:0 auto;padding:max(10px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:10px;flex:1}
+.btop{display:flex;align-items:center;gap:10px}
+.btop .lt{flex:1;min-width:0}
+.btop .lt b{display:block;font-family:var(--f-pixel);font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hearts{display:flex;gap:3px}
+.hearts svg{width:24px;height:24px}
+.hearts .lost{opacity:.25;filter:grayscale(1)}
+.stage{position:relative;height:170px;border-radius:16px;background:radial-gradient(120% 90% at 50% 100%,#2a3463 0%,#151a2e 70%);border:1px solid var(--line);overflow:hidden;display:flex;align-items:flex-end;justify-content:center;padding-bottom:16px}
+.stage::after{content:"";position:absolute;left:10%;right:10%;bottom:12px;height:14px;border-radius:50%;background:#0006;filter:blur(2px)}
+.monster{width:112px;height:112px;position:relative;z-index:1;animation:bob 1.8s ease-in-out infinite}
+.monster.hit{animation:hit .35s}
+.monster.dead{animation:die .7s forwards}
+@keyframes bob{50%{transform:translateY(-6px)}}
+@keyframes hit{0%{filter:brightness(4)}30%{transform:translateX(8px)}60%{transform:translateX(-6px)}100%{filter:none}}
+@keyframes die{to{transform:scale(.2) rotate(30deg);opacity:0;filter:brightness(3)}}
+.mhp{position:absolute;top:10px;left:12px;right:12px;z-index:2}
+.mhp .nm{display:flex;justify-content:space-between;font-size:13px;font-weight:800}
+.mhp .bar{height:12px;background:#0b0e1d;border-radius:8px;border:1px solid var(--line);overflow:hidden;margin-top:3px}
+.mhp .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--ruby),#ff8fa3);transition:width .35s}
+.combo{position:absolute;right:12px;bottom:12px;z-index:2;font-family:var(--f-pixel);text-align:right;line-height:1}
+.combo b{font-size:30px;display:block}
+.combo span{font-size:12px;color:var(--muted)}
+.combo.t1 b{color:var(--sky)} .combo.t2 b{color:var(--gold)} .combo.t3 b{color:var(--epic);text-shadow:0 0 12px var(--epic)}
+.flags{position:absolute;left:12px;bottom:12px;z-index:2;display:flex;gap:4px;flex-wrap:wrap;max-width:50%}
+.flags .chip{font-size:11px;padding:2px 8px}
+.timer{height:6px;background:#0b0e1d;border-radius:4px;overflow:hidden}
+.timer i{display:block;height:100%;background:var(--sky);width:100%}
+.qbox{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.qtag{font-size:12px;font-weight:800;color:var(--sky);text-transform:uppercase;letter-spacing:.06em;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.qtag .chip{text-transform:none;letter-spacing:0}
+.qp{font-size:17px;font-weight:700;text-wrap:pretty}
+.qp em{color:var(--gold);font-style:normal}
+.opts{display:grid;gap:8px}
+.opt{text-align:left;background:var(--night2);border:2px solid var(--line);border-radius:12px;padding:11px 12px;display:flex;gap:10px;align-items:flex-start;transition:transform .08s,border-color .15s}
+.opt:hover:not([disabled]){border-color:var(--sky);transform:translateY(-1px)}
+.opt .k{font-family:var(--f-pixel);color:var(--muted);flex:none;width:18px}
+.opt.right{border-color:var(--emerald);background:#123a2a}
+.opt.wrong{border-color:var(--ruby);background:#3a1220}
+.opt.gone{opacity:.25}
+.opt[disabled]{cursor:default}
+.typebox{display:flex;gap:8px}
+.typebox input{flex:1}
+.hintline{font-family:var(--f-pixel);color:var(--gold);letter-spacing:.15em}
+.match{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}
+.match .col{display:flex;flex-direction:column;gap:8px;min-width:0}
+.mi{text-align:left;background:var(--night2);border:2px solid var(--line);border-radius:12px;padding:9px 10px;font-size:14px;min-height:48px}
+.mi.sel{border-color:var(--gold);box-shadow:0 0 0 2px #ffd16644}
+.mi.done{border-color:var(--emerald);opacity:.55}
+.mi.bad{animation:shake .35s}
+.mi.over{border-color:var(--sky)}
+.order{display:flex;flex-wrap:wrap;gap:8px}
+.order .mi{min-height:auto}
+.seq{display:flex;flex-wrap:wrap;gap:6px;min-height:36px}
+.seq span{background:var(--emerald);color:#04210f;border-radius:8px;padding:4px 8px;font-weight:800;font-size:13px}
+.fb{border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;animation:pop .2s}
+.fb.ok{background:#123a2a;border:1px solid var(--emerald)}
+.fb.no{background:#3a1220;border:1px solid var(--ruby)}
+.fb .t{font-weight:800}
+.fb .f{font-family:var(--f-pixel);font-size:17px;color:var(--gold)}
+.tray{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.pcard{flex:none;width:86px;border-radius:12px;border:2px solid var(--line);background:var(--panel2);padding:6px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:800;text-align:center;line-height:1.2}
+.pcard svg{width:28px;height:28px}
+.pcard .kb{font-family:var(--f-pixel);color:var(--dim);font-size:10px}
+.pcard.rare{border-color:var(--violet)} .pcard.epic{border-color:var(--epic)}
+.pcard[disabled]{opacity:.35;cursor:not-allowed}
+.trayhint{font-size:12px;color:var(--dim)}
+@keyframes shake{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+.shake{animation:shake .35s}
+.vignette{position:fixed;inset:0;pointer-events:none;z-index:70;box-shadow:inset 0 0 120px 40px #ff2a4a;opacity:0;transition:opacity .2s}
+.vignette.on{opacity:.55}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:90}
+.float{position:fixed;z-index:91;pointer-events:none;font-family:var(--f-pixel);font-size:26px;font-weight:700;animation:floatup 1s ease-out forwards;text-shadow:0 2px 0 #000}
+@keyframes floatup{to{transform:translateY(-60px);opacity:0}}
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 14px);transform:translateX(-50%);z-index:95;background:var(--panel2);border:2px solid var(--gold);border-radius:12px;padding:10px 14px;font-weight:800;max-width:min(92vw,460px);box-shadow:0 10px 30px #000a;animation:toast 2.6s forwards;text-align:center}
+@keyframes toast{0%{transform:translate(-50%,-20px);opacity:0}10%,85%{transform:translate(-50%,0);opacity:1}100%{opacity:0}}
+
+/* draft cards */
+.draft{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;perspective:800px}
+.dcard{position:relative;aspect-ratio:3/4.2;border:0;background:none;padding:0;transform-style:preserve-3d;transition:transform .6s;max-width:100%}
+.dcard.flip{transform:rotateY(180deg)}
+.dcard .face{position:absolute;inset:0;border-radius:14px;backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:8px;border:2px solid var(--line)}
+.dcard .back{background:repeating-linear-gradient(45deg,#232a50 0 10px,#1b2140 10px 20px);}
+.dcard .back svg{width:40px;height:40px}
+.dcard .front{transform:rotateY(180deg);background:var(--panel2)}
+.dcard .front svg{width:40px;height:40px}
+.dcard .front b{font-size:13px;line-height:1.2}
+.dcard .front small{font-size:11px;color:var(--muted);line-height:1.3}
+.dcard .front .rar{font-family:var(--f-pixel);font-size:11px}
+.dcard.common .front{border-color:var(--sky)} .dcard.rare .front{border-color:var(--violet);box-shadow:0 0 18px #b58cff55} .dcard.epic .front{border-color:var(--epic);box-shadow:0 0 22px #ff9f4377}
+.bigstars{display:flex;justify-content:center;gap:8px;margin:8px 0}
+.bigstars svg{width:46px;height:46px;animation:pop .4s backwards}
+.stat3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;margin:10px 0}
+.stat3 div{background:var(--night2);border-radius:10px;padding:8px}
+.stat3 b{display:block;font-family:var(--f-pixel);font-size:22px;color:var(--gold)}
+.stat3 span{font-size:12px;color:var(--muted)}
+
+/* album, badges, rank */
+.sec-title{font-family:var(--f-pixel);font-size:22px;color:var(--gold);margin:6px 0 4px}
+.album{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:18px}
+.acard{position:relative;min-height:140px;border:0;padding:0;background:none;perspective:700px}
+.acard .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.acard.flip .in{transform:rotateY(180deg)}
+.acard .fc{position:absolute;inset:0;border-radius:12px;backface-visibility:hidden;padding:10px;display:flex;flex-direction:column;gap:4px;border:2px solid var(--line);text-align:left;overflow:hidden}
+.acard .fr{background:linear-gradient(160deg,var(--panel2),var(--panel))}
+.acard .bk{transform:rotateY(180deg);background:var(--night2);font-size:12px;line-height:1.35;overflow-y:auto}
+.acard.got .fr{border-color:var(--gold)}
+.acard .fr b{font-size:14px;line-height:1.25}
+.acard .fr .lv{font-family:var(--f-pixel);font-size:11px;color:var(--muted)}
+.acard.locked .fr{filter:saturate(.2);opacity:.7}
+.dots{display:flex;gap:4px;margin-top:auto}
+.dots i{width:10px;height:10px;border-radius:50%;background:var(--line)}
+.dots i.on{background:var(--emerald)}
+.badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.badge{background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px}
+.badge svg{width:46px;height:46px}
+.badge.got{border-color:var(--gold)}
+.badge.no{opacity:.45}
+.badge b{font-size:14px}
+.badge span{font-size:12px;color:var(--muted)}
+.rank{display:flex;flex-direction:column;gap:6px}
+.rrow{display:grid;grid-template-columns:36px 40px 1fr auto;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
+.rrow.me{border-color:var(--gold);background:var(--panel2)}
+.rrow .n{font-family:var(--f-pixel);font-size:20px;text-align:center;color:var(--muted)}
+.rrow:nth-child(1) .n{color:var(--gold)} .rrow:nth-child(2) .n{color:#d6dcf5} .rrow:nth-child(3) .n{color:#e3a36c}
+.rrow img{width:36px;height:36px}
+.rrow .nm{min-width:0}
+.rrow .nm b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rrow .nm span{font-size:12px;color:var(--muted)}
+.rrow .xp{font-family:var(--f-pixel);color:var(--gold);font-size:18px;text-align:right}
+.set{display:flex;flex-direction:column;gap:10px}
+.toggle{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+.toggle input{width:22px;height:22px;accent-color:var(--gold)}
+.avatars{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:10px 0}
+.avatars button{background:var(--night2);border:2px solid var(--line);border-radius:14px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px}
+.avatars button[aria-pressed="true"]{border-color:var(--gold);box-shadow:0 0 0 3px #ffd16633}
+.avatars img{width:56px;height:56px}
+kbd{font-family:var(--f-pixel);background:var(--night2);border:1px solid var(--line);border-bottom-width:3px;border-radius:6px;padding:0 6px;font-size:12px}
+.tut{display:flex;gap:12px;align-items:flex-start;background:var(--night2);border-radius:12px;padding:10px}
+.tut svg{width:30px;height:30px;flex:none}
+@media (max-width:520px){
+  .node{width:104px}.node .disc{width:58px;height:58px}.node .disc img{width:40px;height:40px}
+  .match{grid-template-columns:1fr}
+  .stage{height:150px}.monster{width:96px;height:96px}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+
+
+<div id="app">
+  <header class="hud"><div class="wrap" id="hud"></div></header>
+  <main><div class="wrap" id="view"></div></main>
+  <nav class="nav" aria-label="Menu utama"><div class="wrap" id="nav"></div></nav>
+</div>
+<section id="battle" hidden aria-label="Pertempuran"></section>
+<canvas id="fx" aria-hidden="true"></canvas>
+<div class="vignette" id="vig" aria-hidden="true"></div>
+<noscript><p style="padding:20px">这个游戏需要启用 JavaScript。</p></noscript>
+<script>
+window.FQ_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAknDBV7lGmUT9D1v9ILs2S8ON6ck7U3RI",
+  authDomain: "pp-fakta-quest.firebaseapp.com",
+  projectId: "pp-fakta-quest",
+  storageBucket: "pp-fakta-quest.firebasestorage.app",
+  messagingSenderId: "89961376885",
+  appId: "1:89961376885:web:0b26971f07f8929c50dc3c"
+};
+window.FQ_FIREBASE_PENDING = true;
+</script>
+<script>
+/* Question bank — STPM PP 946 Sem 3 · Bab 1 Kemahiran Komunikasi.
+   Source: textbook transcription in the Project (Bab1/*.md). Fakta names and huraian follow the book.
+   Schema (reusable for other Bab / Sem):
+   levels[]: {id, region, code, title, topic, ordered?, monster:{name, sprite, hue}, facts:[{id, f, h, c?, alt?}], cases?:[{name, items:[{fid, text}]}]}
+*/
+window.GAME_DATA = {
+  id: "pp946-s3-bab1",
+  course: "PP 946 · Sem 3",
+  chapter: "Bab 1",
+  title: "Kemahiran Komunikasi",
+  regions: [
+    { id: "r1", name: "Lembah Komunikasi", code: "1.1", blurb: "Proses, jenis, saluran, halangan" },
+    { id: "r2", name: "Kota Business Pitching", code: "1.2", blurb: "BMC, copywriting, pitching, RP" }
+  ],
+  boss: { id: "boss", title: "Raja Salah Faham", topic: "Semua fakta Bab 1", monster: { name: "Raja Salah Faham", sprite: "dragon", hue: 350 }, hp: 20, seconds: 20 },
+  levels: [
+    /* ---------------- 1.1 ---------------- */
+    { id: "L1", region: "r1", code: "1.1.1", title: "Kepentingan Komunikasi", topic: "Kepentingan komunikasi dalam perniagaan",
+      monster: { name: "Lendir Keliru", sprite: "slime", hue: 140 },
+      facts: [
+        { id: "kk1", f: "Membina kefahaman dan penyelarasan kerja", h: "Komunikasi menjelaskan arahan dan peranan supaya tindakan pekerja selaras." },
+        { id: "kk2", f: "Menyokong pembuatan keputusan dan penyelesaian masalah", h: "Komunikasi membekalkan maklumat untuk membuat keputusan yang tepat." },
+        { id: "kk3", f: "Meningkatkan motivasi dan komitmen pekerja", h: "Komunikasi mewujudkan kepercayaan melalui interaksi dua hala." },
+        { id: "kk4", f: "Memperkukuh hubungan pelanggan dan imej organisasi", h: "Komunikasi yang sopan meningkatkan kepuasan pelanggan dan membina reputasi organisasi." },
+        { id: "kk5", f: "Melancarkan urus niaga dan hubungan pihak berkepentingan", h: "Komunikasi memastikan dokumen urus niaga seperti pesanan dan invois tepat." }
+      ] },
+    { id: "L2", region: "r1", code: "1.1.1", title: "Proses Komunikasi", topic: "Langkah-langkah proses komunikasi", ordered: true,
+      monster: { name: "Kelawar Mesej", sprite: "bat", hue: 270 },
+      facts: [
+        { id: "pk1", f: "Penghantar", h: "Individu atau pihak yang mempunyai idea atau maklumat untuk dikongsi.", c: "Pengurus jualan ingin memaklumkan sasaran jualan bulanan kepada pekerja baharu." },
+        { id: "pk2", f: "Mengekod (enkod)", alt: ["mengekod", "enkod"], h: "Proses menukarkan mesej atau idea kepada simbol atau bahasa yang mudah difahami.", c: "Pengurus jualan menulis memo ringkas yang menyatakan sasaran jualan dan tarikh kuat kuasa." },
+        { id: "pk3", f: "Saluran", h: "Cara, laluan atau platform mesej bergerak daripada penghantar kepada penerima.", c: "Memo dibentangkan menggunakan komputer dan LCD semasa mesyuarat jualan." },
+        { id: "pk4", f: "Nyahkod (dekod)", alt: ["nyahkod", "dekod"], h: "Proses penerima mentafsir dan cuba memahami mesej yang disampaikan.", c: "Pekerja jualan meneliti memo dan memahami sasaran yang perlu dicapai." },
+        { id: "pk5", f: "Penerima", h: "Pihak yang mesej disampaikan kepadanya dan menjadi sasaran tindakan.", c: "Pekerja jualan menyusun jadual lawatan pelanggan untuk mengejar sasaran." },
+        { id: "pk6", f: "Maklum balas", h: "Tindak balas atau respons yang berlaku apabila penerima memberikan reaksi, sama ada lisan atau bukan lisan.", c: "Pekerja menghantar laporan jualan harian pertama pada petang yang sama." }
+      ],
+      cases: [{ name: "Top Glove · Pengurus ↔ Penyelia", items: [
+        { fid: "pk1", text: "Pengurus Pengeluaran Top Glove mempunyai maklumat tentang peningkatan kadar penolakan (reject) dan ingin menyampaikan arahan kepada penyelia." },
+        { fid: "pk2", text: "Pengurus menukarkan idea kepada mesej yang jelas dalam bentuk arahan bertulis: sasaran pengurangan reject, langkah pemeriksaan dan masa pelaksanaan." },
+        { fid: "pk3", text: "Pengurus menghantar arahan melalui emel rasmi kepada penyelia syif dan menguatkan mesej melalui perbincangan ringkas." },
+        { fid: "pk4", text: "Penyelia mentafsir mesej tersebut sebagai keperluan untuk mengetatkan semakan parameter mesin dan pemeriksaan visual." },
+        { fid: "pk5", text: "Penyelia syif menerima mesej, memahami kehendak pengurus dan bertanggungjawab melaksanakan arahan di barisan pengeluaran." },
+        { fid: "pk6", text: "Penyelia memberikan laporan ringkas kepada pengurus tentang tindakan yang dibuat dan perubahan kadar reject." }
+      ] }] },
+    { id: "L3", region: "r1", code: "1.1.2", title: "Jenis Komunikasi", topic: "Komunikasi lisan dan bukan lisan",
+      monster: { name: "Hantu Bisu", sprite: "ghost", hue: 200 },
+      facts: [
+        { id: "jk1", f: "Perbincangan (lisan)", alt: ["perbincangan"], h: "Komunikasi dua hala dalam kumpulan atau antara individu untuk bertukar idea dan pandangan." },
+        { id: "jk2", f: "Mesyuarat (lisan)", alt: ["mesyuarat"], h: "Komunikasi formal yang melibatkan pengaliran mesej dua hala antara ahli kumpulan dalam situasi yang tersusun." },
+        { id: "jk3", f: "Ucapan (lisan)", alt: ["ucapan"], h: "Komunikasi sehala yang menyampaikan maklumat daripada pemberi maklumat kepada audiens secara langsung." },
+        { id: "jk4", f: "Pembentangan (lisan)", alt: ["pembentangan"], h: "Komunikasi formal oleh pembentang kepada pendengar untuk menerangkan laporan, cadangan atau maklumat penting." },
+        { id: "jk5", f: "Visual (bukan lisan)", alt: ["visual"], h: "Komunikasi melalui carta, graf, gambar, rajah, objek atau simbol untuk menyampaikan mesej." },
+        { id: "jk6", f: "Bertulis (bukan lisan)", alt: ["bertulis"], h: "Komunikasi melalui simbol atau perkataan dalam bentuk sehala dan formal seperti dokumen serta surat-menyurat." },
+        { id: "jk7", f: "Bahasa isyarat (bukan lisan)", alt: ["bahasa isyarat"], h: "Komunikasi menggunakan isyarat tangan atau kod tertentu untuk menggantikan pertuturan." },
+        { id: "jk8", f: "Bahasa badan (bukan lisan)", alt: ["bahasa badan"], h: "Komunikasi menggunakan anggota badan seperti hubungan mata, ekspresi muka dan pergerakan badan." }
+      ],
+      cases: [{ name: "Farm Fresh & Top Glove", items: [
+        { fid: "jk1", text: "Pengurus Operasi berbincang terus dengan Penyelia Logistik untuk mengenal pasti punca kelewatan." },
+        { fid: "jk2", text: "Pengurus mengadakan sesi penyelarasan dengan ketua pemandu untuk menyelaraskan laluan dan masa pemunggahan." },
+        { fid: "jk3", text: "Pengurus menyampaikan arahan lisan yang menegaskan sasaran masa penghantaran dan standard pematuhan jadual." },
+        { fid: "jk4", text: "Penyelia menerangkan jadual laluan baharu dan pembahagian tugasan pemandu di hadapan semua pihak." },
+        { fid: "jk5", text: "Penyelia memaparkan carta aliran kerja dan simbol semakan kualiti pada stesen tertentu." },
+        { fid: "jk6", text: "Penyelia mengeluarkan notis ringkas tentang titik pemeriksaan wajib sebagai rujukan semua syif." },
+        { fid: "jk7", text: "Semasa operasi berjalan, penyelia menggunakan isyarat tangan untuk menghentikan mesin." },
+        { fid: "jk8", text: "Penyelia menggunakan eye contact dan anggukan untuk mengesahkan operator faham arahan." }
+      ] }] },
+    { id: "L4", region: "r1", code: "1.1.3", title: "Saluran Komunikasi", topic: "Saluran komunikasi dan kesesuaiannya",
+      monster: { name: "Golem Talian", sprite: "golem", hue: 30 },
+      facts: [
+        { id: "sk1", f: "Bersemuka", h: "Dua atau lebih pihak bertemu secara berhadapan; sesuai untuk isu sensitif atau kompleks yang perlukan penjelasan segera." },
+        { id: "sk2", f: "Telefon", h: "Komunikasi antara dua pihak yang berjauhan; sesuai untuk tindakan segera tetapi kurang sesuai jika perlukan bukti bertulis." },
+        { id: "sk3", f: "Internet", h: "Jaringan yang menyebarkan mesej secara meluas tanpa sempadan lokasi, pantas, serentak dan mempunyai rekod komunikasi." },
+        { id: "sk4", f: "Bahan bercetak", h: "Komunikasi bertulis melalui dokumen fizikal seperti memorandum, surat dan laporan; sesuai untuk arahan rasmi dan rujukan." }
+      ],
+      cases: [{ name: "MR.DIY · Stok promosi", items: [
+        { fid: "sk1", text: "Pengurus memanggil penyelia stor ke bilik pejabat untuk menjelaskan keutamaan: semak baki stok dan isi rak." },
+        { fid: "sk2", text: "Selepas penyelia turun ke stor, pengurus menghubunginya untuk mengesahkan perkembangan semakan stok." },
+        { fid: "sk3", text: "Pengurus menghantar e-mel kepada ibu pejabat dengan lampiran senarai item kritikal dan permintaan stok tambahan." },
+        { fid: "sk4", text: "Pengurus menampal notis \"Senarai Item Kritikal Promosi\" di papan kenyataan stor untuk pekerja syif malam." }
+      ] }] },
+    { id: "L5", region: "r1", code: "1.1.3", title: "Internet & Peluang", topic: "Bagaimana Internet meluaskan peluang perniagaan",
+      monster: { name: "Cendawan Wi-Fi", sprite: "mushroom", hue: 190 },
+      facts: [
+        { id: "ip1", f: "E-dagang", h: "Aktiviti belian dan jualan barangan atau perkhidmatan melalui rangkaian elektronik, terutamanya Internet.", c: "Pengeluar kek lapis membuka jualan melalui platform e-dagang." },
+        { id: "ip2", f: "E-pemasaran", h: "Memanfaatkan saluran berasaskan web untuk menyebarkan mesej tentang jenama, produk atau perkhidmatan kepada bakal pelanggan.", c: "Kedai pakaian mempromosikan koleksi baharu melalui media sosial dan e-mel." },
+        { id: "ip3", f: "E-perolehan", h: "Penggunaan Internet untuk mengurus proses perolehan seperti permintaan pembelian, sebut harga dan pemilihan pembekal.", c: "Kilang membuat permintaan sebut harga melalui sistem e-perolehan." },
+        { id: "ip4", f: "E-rekrut", h: "Penggunaan teknologi berasaskan web dalam proses pengambilan pekerja seperti mengiklankan jawatan dan menerima permohonan.", c: "Syarikat mengiklankan jawatan melalui portal pekerjaan dan menjalankan temu duga video." },
+        { id: "ip5", f: "E-bayaran", h: "Sistem bayaran barangan atau perkhidmatan melalui Internet menggunakan peranti elektronik.", c: "Pelanggan membayar menggunakan perbankan internet dan kad debit." }
+      ] },
+    { id: "L6", region: "r1", code: "1.1.4", title: "Halangan Komunikasi", topic: "Halangan-halangan komunikasi",
+      monster: { name: "Tembok Bising", sprite: "golem", hue: 0 },
+      facts: [
+        { id: "hk1", f: "Halangan fizikal", alt: ["fizikal"], h: "Gangguan persekitaran yang wujud secara nyata seperti bunyi bising, jarak atau gangguan alat komunikasi." },
+        { id: "hk2", f: "Halangan psikologikal", alt: ["psikologikal"], h: "Halangan yang berpunca daripada cara berfikir, emosi dan persepsi yang berbeza antara penghantar dengan penerima." },
+        { id: "hk3", f: "Halangan sosiologikal", alt: ["sosiologikal"], h: "Halangan akibat perbezaan interaksi sosial, budaya, status dan latar belakang sosial dalam organisasi." },
+        { id: "hk4", f: "Halangan semantik", alt: ["semantik"], h: "Halangan penggunaan perkataan atau istilah yang membawa makna berbeza kepada individu yang berlainan." }
+      ],
+      cases: [{ name: "Kilang makanan · SOP baharu", items: [
+        { fid: "hk1", text: "Arahan diberi di kawasan operasi yang bising semasa syif malam, menyebabkan pekerja tidak mendengar dengan jelas." },
+        { fid: "hk2", text: "Pekerja menganggap arahan \"siapkan cepat\" sebagai tekanan, lalu tergesa-gesa dan mengabaikan semakan." },
+        { fid: "hk3", text: "Pekerja baharu segan bertanya kerana rakan sekerja lebih senior." },
+        { fid: "hk4", text: "Istilah \"QC check\" tidak dijelaskan, menyebabkan tafsiran pekerja berbeza-beza." }
+      ] }] },
+    { id: "L7", region: "r1", code: "1.1.4", title: "Tindakan Mengatasi", topic: "Tindakan mengatasi halangan komunikasi",
+      monster: { name: "Kabus Kabur", sprite: "ghost", hue: 300 },
+      facts: [
+        { id: "tm1", f: "Mendengar secara berkesan", h: "Mendengar secara empati dan objektif, kritikal dan non-judgemental, serta cetek dan mendalam supaya mesej difahami tepat." },
+        { id: "tm2", f: "Menghindari gangguan proses komunikasi", h: "Memilih masa dan tempat yang sesuai serta mengawal suasana supaya mesej tidak terputus akibat bunyi bising atau gangguan teknikal." },
+        { id: "tm3", f: "Penggunaan alat yang sesuai", h: "Memilih alat komunikasi mengikut jenis mesej, tahap kerahsiaan dan keperluan rekod." },
+        { id: "tm4", f: "Penggunaan bahasa yang sesuai", h: "Menggunakan bahasa yang mudah difahami, tepat dan sepadan dengan tahap pengetahuan penerima." },
+        { id: "tm5", f: "Mengelakkan penggunaan perkataan yang kabur", h: "Menggunakan arahan spesifik seperti tarikh, masa, kuantiti dan kriteria, bukan perkataan umum seperti \"segera\"." }
+      ],
+      cases: [{ name: "Kilang makanan · Sesi penerangan semula", items: [
+        { fid: "tm1", text: "Pekerja diminta mengulangi semula arahan SOP baharu sebelum mula bekerja bagi memastikan kefahaman seragam." },
+        { fid: "tm2", text: "Taklimat dipindahkan ke bilik latihan yang tenang, bukan di kawasan operasi yang bising." },
+        { fid: "tm3", text: "SOP dipaparkan melalui slaid dan salinan dihantar melalui e-mel untuk rujukan ketua syif." },
+        { fid: "tm4", text: "Istilah \"QC check\" diterangkan semula dengan ayat mudah dan langkah kerja yang jelas." },
+        { fid: "tm5", text: "Arahan ditetapkan: semakan dibuat pada setiap peringkat, siap sebelum jam tertentu dan mengikut standard yang dinyatakan." }
+      ] }] },
+
+    /* ---------------- 1.2 ---------------- */
+    { id: "L8", region: "r2", code: "1.2.2", title: "Elemen BMC", topic: "Sembilan elemen Kanvas Model Perniagaan",
+      monster: { name: "Naga Kanvas", sprite: "dragon", hue: 45 },
+      facts: [
+        { id: "bm1", f: "Penawaran nilai", h: "Nilai atau kelebihan utama yang ditawarkan untuk menyelesaikan masalah atau memenuhi keperluan pelanggan." },
+        { id: "bm2", f: "Segmen pelanggan", h: "Kumpulan sasaran yang mempunyai keperluan dan ciri yang serupa." },
+        { id: "bm3", f: "Perhubungan pelanggan", h: "Cara perniagaan membina, mengekalkan dan mengukuhkan hubungan dengan pelanggan." },
+        { id: "bm4", f: "Aliran pendapatan", h: "Cara perniagaan menjana hasil daripada pelanggan." },
+        { id: "bm5", f: "Sumber kekunci", h: "Aset utama yang diperlukan untuk menyampaikan penawaran nilai." },
+        { id: "bm6", f: "Saluran (BMC)", alt: ["saluran"], h: "Laluan perniagaan untuk menyampaikan nilai dan berhubung dengan pelanggan." },
+        { id: "bm7", f: "Aktiviti kekunci", h: "Kerja teras yang mesti dilakukan untuk menjayakan model perniagaan." },
+        { id: "bm8", f: "Rakan kongsi kekunci", h: "Pihak luar yang membantu perniagaan beroperasi dengan lebih efektif." },
+        { id: "bm9", f: "Struktur kos", h: "Kos utama yang perlu ditanggung untuk menjalankan perniagaan, merangkumi kos tetap dan kos berubah." }
+      ],
+      cases: [{ name: "Laundry Café Self-Service", items: [
+        { fid: "bm1", text: "Basuh dan kering 60 minit sambil menikmati kafe dan menggunakan ruang kerja atau belajar yang selesa." },
+        { fid: "bm2", text: "Pelajar kolej atau universiti, penyewa bujang, pekerja bandar dan ibu bapa muda." },
+        { fid: "bm3", text: "Program keahlian (mata ganjaran), pakej langganan bulanan dan maklum balas melalui WhatsApp atau DM." },
+        { fid: "bm4", text: "Bayaran mesin basuh dan pengering, jualan minuman kafe dan yuran tempahan meja ruang kerja." },
+        { fid: "bm5", text: "Mesin dobi komersial, peralatan kafe, Wi-Fi stabil dan sistem bayaran tanpa tunai." },
+        { fid: "bm6", text: "Promosi melalui media sosial, peta digital, platform ulasan dan papan tanda premis." },
+        { fid: "bm7", text: "Penyelenggaraan mesin, kebersihan premis, operasi kafe dan pengurusan aduan pelanggan." },
+        { fid: "bm8", text: "Pembekal mesin dobi, pembekal bahan minuman, penyedia Internet dan kolej berdekatan." },
+        { fid: "bm9", text: "Sewaan premis dan gaji staf; air, elektrik dan bahan minuman." }
+      ] }] },
+    { id: "L9", region: "r2", code: "1.2.3", title: "Prinsip Copywriting", topic: "Prinsip asas copywriting",
+      monster: { name: "Pena Sesat", sprite: "bat", hue: 20 },
+      facts: [
+        { id: "cp1", f: "Berorientasikan audiens", h: "Ditulis mengikut sasaran utama kerana setiap kumpulan mempunyai keperluan, masalah, bahasa dan motivasi yang berbeza." },
+        { id: "cp2", f: "Fokus kepada masalah dan penyelesaian", h: "Mesej bermula daripada masalah pelanggan dan menghubungkannya dengan penyelesaian yang ditawarkan." },
+        { id: "cp3", f: "Tonjolkan nilai, bukan sekadar ciri", h: "Menerangkan manfaat yang pelanggan peroleh, bukan hanya menyenaraikan apa yang ada pada produk." },
+        { id: "cp4", f: "Ringkas, jelas dan mudah diimbas", h: "Mesej padat, jelas dan mudah ditangkap kerana ramai pembaca digital membaca secara pantas." },
+        { id: "cp5", f: "Konsisten dari segi nada dan janji", h: "Nada selari dengan imej jenama dan janji mesti realistik agar kepercayaan pelanggan tidak terjejas." }
+      ] },
+    { id: "L10", region: "r2", code: "1.2.3", title: "Elemen Copywriting", topic: "Tujuh elemen copywriting",
+      monster: { name: "Poster Hidup", sprite: "mushroom", hue: 330 },
+      facts: [
+        { id: "ce1", f: "Tajuk yang menarik", h: "Menangkap perhatian sasaran dalam tempoh singkat dan menonjolkan manfaat utama atau masalah pelanggan." },
+        { id: "ce2", f: "Produk atau perkhidmatan yang ditawarkan", h: "Menyatakan dengan jelas apa yang ditawarkan supaya pelanggan memahami bentuk produk tanpa kekeliruan." },
+        { id: "ce3", f: "Ciri-ciri unik produk (USP)", alt: ["usp", "ciri-ciri unik produk", "unique selling point"], h: "Keunikan bernilai yang membezakan tawaran daripada pesaing." },
+        { id: "ce4", f: "Gesaan tindakan (CTA)", alt: ["cta", "gesaan tindakan", "call to action"], h: "Ayat arahan yang mengajak pelanggan bertindak sekarang." },
+        { id: "ce5", f: "Asas-asas segmentasi", alt: ["segmentasi"], h: "Membahagi pasaran kepada kumpulan pelanggan yang sama supaya mesej difokuskan mengikut keperluan mereka." },
+        { id: "ce6", f: "Perkataan spesifik dan sesuai", h: "Perkataan konkrit dan tepat seperti angka, masa dan syarat yang mudah dibuktikan." },
+        { id: "ce7", f: "Visual yang bersesuaian", h: "Gambar, ikon atau susun atur yang membantu mesej difahami pantas dan selari dengan tajuk serta USP." }
+      ],
+      cases: [{ name: "Hentian Ekspres", items: [
+        { fid: "ce1", text: "\"Teh Tarik & Roti Canai Siap Kurang 5 Minit – Pantas Sebelum Kerja\"" },
+        { fid: "ce2", text: "Penyediaan teh tarik panas, roti canai garing dan kombo sarapan ringkas." },
+        { fid: "ce3", text: "Masa siap dalam 5 minit, rasa konsisten serta pilihan kurang manis atau kurang minyak." },
+        { fid: "ce4", text: "\"Terus pesan di kaunter Express Pick-Up sekarang\"" },
+        { fid: "ce5", text: "Disasarkan kepada pekerja pejabat, pengguna komuter, pelajar kolej dan ibu bapa yang tergesa-gesa." },
+        { fid: "ce6", text: "Frasa seperti \"siap dalam 5 minit\", \"menu kombo teras\" dan \"waktu puncak pagi\"." },
+        { fid: "ce7", text: "Paparan imej teh tarik panas berasap, roti canai segar dan jam waktu puncak." }
+      ] }] },
+    { id: "L11", region: "r2", code: "1.2.4", title: "Jenis Business Pitching", topic: "Lima jenis business pitching",
+      monster: { name: "Lif Berhantu", sprite: "ghost", hue: 160 },
+      facts: [
+        { id: "bp1", f: "Sales pitch", h: "Pitching yang bertujuan mendorong pelanggan membuat pembelian, berfokus pada manfaat kepada pelanggan." },
+        { id: "bp2", f: "Investor pitch", h: "Pitching kepada pelabur bagi mendapatkan pembiayaan, menekankan potensi pertumbuhan dan pulangan pelaburan." },
+        { id: "bp3", f: "Elevator pitch", h: "Penerangan ringkas dalam 30 hingga 60 saat untuk memperkenalkan idea perniagaan secara padat." },
+        { id: "bp4", f: "Product pitch", h: "Fokus khusus kepada produk tertentu: cara berfungsi, kelebihan dan perbezaan daripada pesaing." },
+        { id: "bp5", f: "The social media pitch", alt: ["social media pitch"], h: "Pitching melalui platform media sosial dengan mesej ringkas, visual menarik dan gesaan tindakan segera." }
+      ],
+      cases: [{ name: "Laundry Café Self-Service", items: [
+        { fid: "bp1", text: "Kepada pelanggan harian dan komuniti setempat: menjual kemudahan, keselesaan dan penjimatan masa." },
+        { fid: "bp2", text: "Kepada pelabur dan pemilik premis: model perniagaan, keuntungan dan kebolehskalaan." },
+        { fid: "bp3", text: "Dalam sesi jaringan dan rundingan pantas: idea perniagaan secara ringkas dan menarik." },
+        { fid: "bp4", text: "Kepada pelanggan dan rakan operasi: menerangkan ciri perkhidmatan dobi dan kafe." },
+        { fid: "bp5", text: "Kepada pengguna digital: membina kesedaran jenama dan tarikan visual." }
+      ] }] },
+    { id: "L12", region: "r2", code: "1.2.5", title: "Kepentingan RP", topic: "Kepentingan RP dan kebolehlaksanaan",
+      monster: { name: "Skrol Sesat", sprite: "slime", hue: 50 },
+      facts: [
+        { id: "rp1", f: "Garis panduan hala tuju", h: "RP menjelaskan hala tuju perniagaan termasuk sasaran, strategi dan tindakan agar operasi berjalan teratur." },
+        { id: "rp2", f: "Alat komunikasi kepada pihak berkepentingan", h: "RP menghimpunkan maklumat secara tersusun untuk pihak dalaman dan luaran seperti pelabur dan pembiaya." },
+        { id: "rp3", f: "Alat kawalan", h: "RP membantu mengurangkan kesilapan, memantau pelaksanaan dan menyelaras tindakan pembetulan." },
+        { id: "rp4", f: "Penggunaan sumber cekap atau optimum", alt: ["penggunaan sumber cekap", "penggunaan sumber optimum"], h: "RP membantu sumber seperti kewangan, tenaga kerja dan masa digunakan secara cekap melalui bajet dan jadual." },
+        { id: "rp5", f: "Penilaian prestasi", h: "RP membolehkan prestasi dinilai secara objektif melalui sasaran dan petunjuk prestasi." },
+        { id: "rp6", f: "Penilaian pasaran (kebolehlaksanaan)", alt: ["penilaian pasaran"], h: "Menentukan sama ada wujud permintaan, siapa pelanggan dan bagaimana kedudukan pesaing." },
+        { id: "rp7", f: "Penilaian operasi (kebolehlaksanaan)", alt: ["penilaian operasi"], h: "Menentukan kesesuaian lokasi, proses, kapasiti dan keperluan tenaga kerja." },
+        { id: "rp8", f: "Penilaian kewangan (kebolehlaksanaan)", alt: ["penilaian kewangan"], h: "Menentukan sama ada struktur kos dan aliran tunai mampu menyokong operasi serta pulangan yang munasabah." }
+      ] },
+    { id: "L13", region: "r2", code: "1.2.5", title: "Format RP", topic: "Dua belas bahagian format rancangan perniagaan", ordered: true,
+      monster: { name: "Golem Dokumen", sprite: "golem", hue: 220 },
+      facts: [
+        { id: "fr1", f: "Rumusan eksekutif", h: "Ringkasan menyeluruh tentang keseluruhan RP; menjadi fokus utama pembiaya atau pelabur dan ditulis paling akhir." },
+        { id: "fr2", f: "Pengenalan", h: "Bahagian awal yang memberi konteks dan menghubungkan pembaca kepada rasional penyediaan RP." },
+        { id: "fr3", f: "Objektif", h: "Perkara yang ingin dicapai dalam tempoh tertentu; spesifik, boleh diukur dan sejajar dengan sumber." },
+        { id: "fr4", f: "Latar belakang syarikat", h: "Memperkenalkan identiti organisasi serta kedudukan perniagaan dalam pasaran." },
+        { id: "fr5", f: "Latar belakang pemilik", h: "Menunjukkan kredibiliti dan keupayaan individu yang menerajui perniagaan." },
+        { id: "fr6", f: "Latar belakang projek", h: "Menerangkan rasional pelaksanaan projek serta bukti bahawa projek wajar dijalankan." },
+        { id: "fr7", f: "Rancangan organisasi", h: "Menerangkan bagaimana perniagaan diurus secara tersusun: struktur, peranan dan sistem pengurusan." },
+        { id: "fr8", f: "Rancangan pemasaran", h: "Strategi untuk menarik, memujuk dan mengekalkan pelanggan." },
+        { id: "fr9", f: "Rancangan pengeluaran", h: "Menerangkan bagaimana produk dihasilkan atau perkhidmatan disampaikan secara konsisten dan berkualiti." },
+        { id: "fr10", f: "Rancangan kewangan", h: "Menunjukkan daya maju dan keupayaan menjana keuntungan melalui anggaran dan unjuran yang munasabah." },
+        { id: "fr11", f: "Kesimpulan", h: "Merumuskan kekuatan utama projek dan menegaskan mengapa perniagaan wajar disokong." },
+        { id: "fr12", f: "Lampiran", h: "Dokumen sokongan seperti lesen, sebut harga dan pelan lokasi bagi mengukuhkan maklumat RP." }
+      ] },
+    { id: "L14", region: "r2", code: "1.2.5", title: "Elemen RP · I", topic: "Elemen dalam Rumusan Eksekutif, Rancangan Organisasi dan Rancangan Pemasaran",
+      groupMode: true,
+      monster: { name: "Penjaga Arkib", sprite: "dragon", hue: 120 },
+      facts: [
+        { id: "e1", f: "Tujuan RP", h: "Rumusan Eksekutif" },
+        { id: "e2", f: "Maklumat asas perniagaan", h: "Rumusan Eksekutif" },
+        { id: "e3", f: "Keunikan perniagaan", h: "Rumusan Eksekutif" },
+        { id: "e4", f: "Jumlah kos projek dan pembiayaan", h: "Rumusan Eksekutif" },
+        { id: "e5", f: "Ringkasan produk, perkhidmatan dan prospek pasaran", h: "Rumusan Eksekutif" },
+        { id: "e6", f: "Ringkasan rancangan organisasi, pemasaran, operasi dan kewangan", h: "Rumusan Eksekutif" },
+        { id: "e7", f: "Pengenalan organisasi", h: "Rancangan Organisasi" },
+        { id: "e8", f: "Struktur organisasi", h: "Rancangan Organisasi" },
+        { id: "e9", f: "Senarai kakitangan", h: "Rancangan Organisasi" },
+        { id: "e10", f: "Analisis kerja", h: "Rancangan Organisasi" },
+        { id: "e11", f: "Sistem imbuhan dan insentif", h: "Rancangan Organisasi" },
+        { id: "e12", f: "Keperluan pejabat dan belanjawan pentadbiran", h: "Rancangan Organisasi" },
+        { id: "e13", f: "Sasaran pasaran dan pelanggan", h: "Rancangan Pemasaran" },
+        { id: "e14", f: "Analisis persaingan", h: "Rancangan Pemasaran" },
+        { id: "e15", f: "Strategi produk", h: "Rancangan Pemasaran" },
+        { id: "e16", f: "Strategi saluran agihan", h: "Rancangan Pemasaran" },
+        { id: "e17", f: "Strategi penetapan harga", h: "Rancangan Pemasaran" },
+        { id: "e18", f: "Strategi promosi", h: "Rancangan Pemasaran" }
+      ] },
+    { id: "L15", region: "r2", code: "1.2.5", title: "Elemen RP · II", topic: "Elemen dalam Latar Belakang Projek, Rancangan Pengeluaran dan Rancangan Kewangan",
+      groupMode: true,
+      monster: { name: "Raksasa Lejar", sprite: "golem", hue: 280 },
+      facts: [
+        { id: "g1", f: "Sebab projek dilaksanakan", h: "Latar Belakang Projek" },
+        { id: "g2", f: "Tahap kebolehlaksanaan projek", h: "Latar Belakang Projek" },
+        { id: "g3", f: "Sebab memilih projek", h: "Latar Belakang Projek" },
+        { id: "g4", f: "Tapak dan lokasi projek", h: "Latar Belakang Projek" },
+        { id: "g5", f: "Status kelulusan dan lesen", h: "Latar Belakang Projek" },
+        { id: "g6", f: "Huraian produk atau perkhidmatan dan kuantiti", h: "Rancangan Pengeluaran" },
+        { id: "g7", f: "Proses operasi", h: "Rancangan Pengeluaran" },
+        { id: "g8", f: "Bahan mentah dan kawalan stok", h: "Rancangan Pengeluaran" },
+        { id: "g9", f: "Tenaga kerja operasi", h: "Rancangan Pengeluaran" },
+        { id: "g10", f: "Mesin dan peralatan", h: "Rancangan Pengeluaran" },
+        { id: "g11", f: "Susun atur operasi", h: "Rancangan Pengeluaran" },
+        { id: "g12", f: "Lokasi tapak operasi", h: "Rancangan Pengeluaran" },
+        { id: "g13", f: "Belanjawan operasi", h: "Rancangan Pengeluaran" },
+        { id: "g14", f: "Kapasiti pengeluaran dan jangkaan jualan", h: "Rancangan Pengeluaran" },
+        { id: "g15", f: "Penyata kewangan utama", h: "Rancangan Kewangan" },
+        { id: "g16", f: "Kos permulaan dan sumber pembiayaan", h: "Rancangan Kewangan" },
+        { id: "g17", f: "Strategi pengurusan kewangan", h: "Rancangan Kewangan" },
+        { id: "g18", f: "Ramalan dan unjuran kewangan", h: "Rancangan Kewangan" },
+        { id: "g19", f: "Analisis titik pulang modal", h: "Rancangan Kewangan" },
+        { id: "g20", f: "Analisis nisbah kewangan", h: "Rancangan Kewangan" }
+      ] }
+  ]
+};
+
+</script>
+<script>
+/* Fakta Quest engine — data-driven RPG revision game. Reads window.GAME_DATA. */
+(() => {
+'use strict';
+const D = window.GAME_DATA;
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const pick = a => a[Math.random() * a.length | 0];
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ---------- facts index ---------- */
+const FACTS = {}, LEVEL_OF = {};
+D.levels.forEach(L => L.facts.forEach(f => { FACTS[f.id] = f; LEVEL_OF[f.id] = L; }));
+const ALL_FIDS = Object.keys(FACTS);
+const LV = id => D.levels.find(l => l.id === id);
+
+/* ---------- save ---------- */
+const KEY = 'faktaquest-' + D.id;
+const store = { get() { try { return JSON.parse(localStorage.getItem(KEY)); } catch (e) { return null; } }, set(v) { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) {} } };
+const fresh = () => ({ v: 1, name: '', avatar: 0, xp: 0, onboarded: false, inventory: ['heal', 'hint', 'fifty'], levels: {}, facts: {}, badges: {},
+  streak: { last: '', count: 0 }, stats: { correct: 0, wrong: 0, typed: 0, kk: 0, maxCombo: 0, cardsUsed: 0, boss: 0, battles: 0, perfect: 0, comeback: 0, owl: 0 },
+  settings: { sfx: true, bgm: false, unlockAll: false }, review: [], updatedAt: 0 });
+function normalize(s) {
+  const f = fresh(); s = Object.assign(f, s || {});
+  s.stats = Object.assign(fresh().stats, s.stats || {}); s.settings = Object.assign(fresh().settings, s.settings || {});
+  s.streak = Object.assign(fresh().streak, s.streak || {}); return s;
+}
+let S = normalize(store.get());
+function save() { S.updatedAt = Date.now(); store.set(S); cloudSave(); }
+
+const fstate = id => (S.facts[id] = S.facts[id] || { m: [], c: 0, w: 0 });
+const mastered = id => (S.facts[id] && S.facts[id].m.length >= 2);
+const masteredCount = (ids = ALL_FIDS) => ids.filter(mastered).length;
+const lstate = id => S.levels[id] || { stars: 0 };
+
+/* ---------- player level ---------- */
+const needFor = lv => 50 * lv * (lv + 1);          // cumulative XP to reach lv+1
+function lvlInfo(xp = S.xp) { let lv = 1; while (xp >= needFor(lv)) lv++; const lo = lv === 1 ? 0 : needFor(lv - 1), hi = needFor(lv); return { lv, pct: (xp - lo) / (hi - lo), into: xp - lo, span: hi - lo }; }
+const TITLES = [[1, 'Perantis'], [3, 'Pelatih Muda'], [5, 'Usahawan Muda'], [8, 'Pengurus Bijak'], [12, 'Pakar Pitching'], [16, 'Tokoh Korporat'], [20, 'Legenda STPM']];
+const titleFor = lv => TITLES.filter(t => lv >= t[0]).pop()[1];
+
+/* ---------- pixel sprites ---------- */
+const SPR = {
+  slime: ['', '', '', '', '......kkkk', '....kkccaakk', '...kccaaaaaak', '..kcaaaaaaaaak', '..kaawkaaawkak', '.kaaakkaaakkaak', '.kaaaaaaaaaaaak', '.kaaaarrrraaaak', '.kbaaaaaaaaaabk', '..kbbbbbbbbbbk', '...kkkkkkkkkk'],
+  bat: ['', '', '.k............k', '.kk..........kk', '.kak...kk...kak', '.kaak.kaak.kaak', '.kaaakaaaakaaak', '.kaaaawaawaaaak', '..kaaakaakaaak', '..kbaaaaaaaabk', '...kbaarraabk', '....kbaaaabk', '.....kbbbbk', '......kkkk'],
+  ghost: ['', '.....kkkkkk', '....kccccaak', '...kccaaaaaak', '..kcaaaaaaaaak', '..kaakkaakkaak', '..kaakwaakwaak', '..kaaaaaaaaaak', '..kaaaarraaaak', '..kaaaaaaaaaak', '..kaaaaaaaaaak', '..kbaaaaaaaabk', '..kbabaabaabbk', '..kbkbkbbkbkbk', '..k.k.kk.k.k.k'],
+  golem: ['', '....kkkkkkkk', '...kbaaaaaabk', '...kaawaawaak', '...kaakaakaak', '...kbaaaaaabk', '.kkkbbrrrrbbkkk', 'kaabkaaaaaakbaak', 'kaabkaaaaaakbaak', 'kbbkkaaaaaakkbbk', '.kk.kbaaaabk.kk', '....kbaaaabk', '....kbk..kbk', '...kbbk..kbbk', '...kkkk..kkkk'],
+  mushroom: ['', '.....kkkkkk', '...kkaawaaakk', '..kaawwaaaawak', '.kaaaaaaawwaaak', '.kawwaaaaaaaaak', '.kaaaaawaaaaaak', '..kkkkkkkkkkkk', '....kccccccck', '....kcwkcwkck', '....kccccccck', '....kcccrrcck', '....kccccccck', '.....kkkkkkk'],
+  dragon: ['', '..k........k', '..kk......kk', '..kak....kak', '...kaakkaak', '...kaaaaaaakk', '..kaawaaawaaak', '..kaakaaakaaak', '.kkaaaaaaaaaakk', 'kyykaarrrraakyyk', 'kyykaaaaaaaakyyk', '.kkkbaaaaaabkkk', '...kbabaababk', '...kbbkbbkbbk', '....kk.kk.kk'],
+  hero: ['', '.....hhhhhh', '....hhhhhhhh', '...hhhhhhhhhh', '....kssssssk', '....kswsswsk', '....kssssssk', '.....kssrsk', '....kaaaaaak', '...kaaaaaaaak', '..ksaaayyaaask', '..ksaaaaaaaask', '...kaaaaaaaak', '....kbbkkbbk', '....kbbk.kbbk', '....kkkk.kkkk']
+};
+const spriteCache = {};
+function sprite(name, hue, hat) {
+  const key = name + hue + (hat ?? '');
+  if (spriteCache[key]) return spriteCache[key];
+  const rows = SPR[name], N = 16, sc = 6, cv = document.createElement('canvas'); cv.width = cv.height = N * sc;
+  const g = cv.getContext('2d');
+  const pal = { k: '#0f1020', a: `hsl(${hue} 62% 56%)`, b: `hsl(${hue} 58% 34%)`, c: `hsl(${hue} 75% 74%)`, w: '#ffffff', r: '#ff5c7a', y: '#ffd166', s: '#f2c9a0', h: `hsl(${hat ?? hue + 40} 72% 52%)` };
+  rows.forEach((row, y) => [...row].forEach((ch, x) => { if (pal[ch]) { g.fillStyle = pal[ch]; g.fillRect(x * sc, y * sc, sc, sc); } }));
+  return (spriteCache[key] = cv.toDataURL());
+}
+const AVATARS = [{ n: 'Kesatria', hue: 215, hat: 0 }, { n: 'Ahli Sihir', hue: 275, hat: 260 }, { n: 'Pemanah', hue: 140, hat: 95 }, { n: 'Saudagar', hue: 30, hat: 45 }];
+const avatarImg = i => { const a = AVATARS[i] || AVATARS[0]; return sprite('hero', a.hue, a.hat); };
+
+/* ---------- icons ---------- */
+const IC = {
+  heart: c => `<svg viewBox="0 0 16 16"><path fill="${c || '#ff5c7a'}" stroke="#0f1020" stroke-width="1" d="M8 14 2 8.2C.6 6.6 1 3.8 3.2 3c1.6-.6 3.4.1 4.8 1.8C9.4 3.1 11.2 2.4 12.8 3 15 3.8 15.4 6.6 14 8.2Z"/></svg>`,
+  star: on => `<svg viewBox="0 0 16 16"><path fill="${on ? '#ffd166' : '#33406e'}" stroke="#0f1020" stroke-width="1" d="m8 1.5 2 4.3 4.6.5-3.4 3.1 1 4.6L8 11.6 3.8 14l1-4.6L1.4 6.3 6 5.8Z"/></svg>`,
+  lock: `<svg viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="8" rx="1.5" fill="#a3abd6"/><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="#a3abd6" stroke-width="2"/></svg>`,
+  sound: on => `<svg viewBox="0 0 24 24" fill="none" stroke="#eef0ff" stroke-width="2"><path d="M4 9h4l5-4v14l-5-4H4z" fill="#eef0ff"/>${on ? '<path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/>' : '<path d="m16 9 6 6m0-6-6 6"/>'}</svg>`,
+  music: on => `<svg viewBox="0 0 24 24" fill="none" stroke="${on ? '#ffd166' : '#6e77a8'}" stroke-width="2"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3" fill="${on ? '#ffd166' : '#6e77a8'}"/><circle cx="17" cy="16" r="3" fill="${on ? '#ffd166' : '#6e77a8'}"/></svg>`,
+  flame: `<svg viewBox="0 0 16 16"><path fill="#ff9f43" d="M8 1c1 3 4 4.5 4 8.2A4 4 0 0 1 4 9.2C4 7 5.4 6 6 4.5c.6 1.6 1.6 2 2 2.5C8.3 5 7.6 3 8 1Z"/><path fill="#ffd166" d="M8 8c.8 1.3 2 2 2 3.2a2 2 0 0 1-4 0C6 10 7.4 9.4 8 8Z"/></svg>`,
+  map: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg>',
+  album: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="8" height="11" rx="1.5"/><rect x="13" y="4" width="8" height="11" rx="1.5"/><path d="M3 19h18"/></svg>',
+  badge: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="9" r="6"/><path d="m8.5 14-2 7 5.5-3 5.5 3-2-7"/></svg>',
+  rank: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V11h4v9M10 20V5h4v15M16 20v-6h4v6"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>',
+  x: '<svg viewBox="0 0 24 24" fill="none" stroke="#eef0ff" stroke-width="2.5"><path d="m6 6 12 12M18 6 6 18"/></svg>',
+  book: '<svg viewBox="0 0 24 24" fill="none" stroke="#5cc8ff" stroke-width="2"><path d="M4 5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/></svg>'
+};
+const CARD_ICON = {
+  heal: '<svg viewBox="0 0 32 32"><rect x="11" y="4" width="10" height="5" fill="#a3abd6"/><path d="M9 9h14l2 6v11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V15z" fill="#ff5c7a" stroke="#0f1020"/><path d="M16 14v9M11.5 18.5h9" stroke="#fff" stroke-width="2.5"/></svg>',
+  shield: '<svg viewBox="0 0 32 32"><path d="M16 3 27 7v8c0 7-5 12-11 14C10 27 5 22 5 15V7z" fill="#5cc8ff" stroke="#0f1020"/><path d="M16 7v18" stroke="#fff" stroke-width="2"/></svg>',
+  hint: '<svg viewBox="0 0 32 32"><circle cx="16" cy="13" r="8" fill="#ffd166" stroke="#0f1020"/><rect x="12" y="21" width="8" height="6" rx="1" fill="#a3abd6"/><path d="M16 9v6" stroke="#0f1020" stroke-width="2"/></svg>',
+  fifty: '<svg viewBox="0 0 32 32"><path d="M6 26 22 6l4 4L10 26z" fill="#d6dcf5" stroke="#0f1020"/><path d="m5 21 6 6" stroke="#f4a73b" stroke-width="3"/><text x="18" y="29" font-size="9" font-family="monospace" fill="#ffd166" font-weight="bold">50</text></svg>',
+  guard: '<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="11" fill="#b58cff" stroke="#0f1020"/><path d="m11 16 4 4 7-8" fill="none" stroke="#fff" stroke-width="3"/></svg>',
+  double: '<svg viewBox="0 0 32 32"><rect x="6" y="5" width="20" height="22" rx="2" fill="#45d48a" stroke="#0f1020"/><text x="9" y="21" font-size="12" font-family="monospace" fill="#04210f" font-weight="bold">x2</text></svg>',
+  iron: '<svg viewBox="0 0 32 32"><rect x="4" y="8" width="24" height="18" fill="#a3abd6" stroke="#0f1020"/><path d="M4 14h24M4 20h24M12 8v6M20 14v6M12 20v6" stroke="#6e77a8" stroke-width="2"/></svg>',
+  peek: '<svg viewBox="0 0 32 32"><path d="M3 16s5-9 13-9 13 9 13 9-5 9-13 9S3 16 3 16z" fill="#5cc8ff" stroke="#0f1020"/><circle cx="16" cy="16" r="5" fill="#0f1020"/><circle cx="18" cy="14" r="1.6" fill="#fff"/></svg>',
+  smash: '<svg viewBox="0 0 32 32"><rect x="5" y="5" width="16" height="10" rx="2" fill="#ff9f43" stroke="#0f1020"/><rect x="14" y="14" width="4" height="15" fill="#a36a3a" stroke="#0f1020"/><path d="m22 20 6-2M23 25l5 1" stroke="#ffd166" stroke-width="2"/></svg>',
+  freeze: '<svg viewBox="0 0 32 32"><circle cx="16" cy="17" r="11" fill="#5cc8ff" stroke="#0f1020"/><path d="M16 10v7l5 3" stroke="#0f1020" stroke-width="2.5" fill="none"/><path d="M12 3h8" stroke="#a3abd6" stroke-width="3"/></svg>'
+};
+
+/* ---------- power cards ---------- */
+const CARDS = {
+  heal:   { zh: '治疗', ms: 'Ramuan Hayat', rar: 'common', desc: '回复 1 颗心。' },
+  shield: { zh: '护盾', ms: 'Perisai', rar: 'common', desc: '挡下一次答错，不扣心；那题之后会出现两次。' },
+  hint:   { zh: '提示', ms: 'Lampu Petunjuk', rar: 'common', desc: '默写题显示答案的首字母和字数。' },
+  fifty:  { zh: '五五开', ms: 'Pedang 50:50', rar: 'common', desc: '选择题去掉两个错误选项；本题 XP 减半。' },
+  guard:  { zh: '连击守护', ms: 'Azimat Combo', rar: 'rare', desc: '下一次答错不会中断连击。' },
+  double: { zh: '双倍经验', ms: 'Kitab Ganda', rar: 'rare', desc: '接下来 3 题答对，XP 加倍。' },
+  iron:   { zh: '铁壁', ms: 'Tembok Besi', rar: 'rare', desc: '本场最大血量 +1，并回 1 颗心。' },
+  peek:   { zh: '透视', ms: 'Mata Tembus', rar: 'rare', desc: '偷看本题答案 3 秒，然后自己作答；本题 XP 减半。' },
+  smash:  { zh: '重击', ms: 'Hentaman Maut', rar: 'epic', desc: '怪物扣 2 格血。被跳过的 fakta 会进入复习清单。' },
+  freeze: { zh: '时间冻结', ms: 'Jam Beku', rar: 'epic', desc: '只在计时 Boss 战使用：本题加 10 秒。' }
+};
+const RAR_ZH = { common: '普通', rare: '稀有', epic: '史诗' };
+const INV_MAX = 6;
+
+/* ---------- audio ---------- */
+let ac = null, master = null, bgmTimer = null;
+function audio() {
+  if (!ac) { const A = window.AudioContext || window.webkitAudioContext; if (!A) return null; ac = new A(); master = ac.createGain(); master.gain.value = .5; master.connect(ac.destination); }
+  if (ac.state === 'suspended') ac.resume();
+  return ac;
+}
+function tone(f, d, { type = 'square', vol = .07, at = 0, to = null } = {}) {
+  if (!S.settings.sfx && !tone.bgm) return; const a = audio(); if (!a) return;
+  const t = a.currentTime + at, o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t); if (to) o.frequency.exponentialRampToValueAtTime(to, t + d);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + d + .02);
+}
+function noise(d = .12, vol = .08) {
+  if (!S.settings.sfx) return; const a = audio(); if (!a) return;
+  const b = a.createBuffer(1, a.sampleRate * d, a.sampleRate), ch = b.getChannelData(0);
+  for (let i = 0; i < ch.length; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / ch.length);
+  const s = a.createBufferSource(), g = a.createGain(); g.gain.value = vol; s.buffer = b; s.connect(g); g.connect(master); s.start();
+}
+const SFX = {
+  click() { tone(660, .05, { vol: .04 }); },
+  correct() { [523, 659, 784].forEach((f, i) => tone(f, .12, { at: i * .06, vol: .06 })); },
+  wrong() { tone(220, .28, { type: 'sawtooth', to: 90, vol: .07 }); },
+  hit() { noise(.1, .1); tone(180, .12, { type: 'square', to: 60, vol: .06 }); },
+  combo(n) { const b = 523 + Math.min(n, 12) * 40; [0, 4, 7, 12].forEach((s, i) => tone(b * Math.pow(2, s / 12), .1, { at: i * .05, vol: .05 })); },
+  card() { tone(300, .25, { type: 'triangle', to: 1200, vol: .06 }); },
+  heal() { [392, 523, 659, 784].forEach((f, i) => tone(f, .14, { type: 'triangle', at: i * .07, vol: .07 })); },
+  level() { [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, .16, { at: i * .1, vol: .07 })); },
+  win() { [392, 523, 659, 784, 659, 784, 1047].forEach((f, i) => tone(f, .18, { at: i * .11, vol: .07 })); },
+  lose() { [392, 330, 262, 196].forEach((f, i) => tone(f, .25, { type: 'triangle', at: i * .18, vol: .08 })); },
+  badge() { [784, 988, 1175, 1568].forEach((f, i) => tone(f, .12, { type: 'triangle', at: i * .08, vol: .06 })); },
+  tick() { tone(1200, .03, { vol: .03 }); }
+};
+const MEL = [69, 72, 76, 72, 74, 72, 69, 67, 69, 72, 76, 79, 76, 74, 72, 74, 69, 72, 76, 72, 74, 76, 79, 81, 79, 76, 74, 72, 74, 72, 69, null];
+const BASS = [45, 45, 48, 48, 43, 43, 45, 45];
+function bgm(on) {
+  clearInterval(bgmTimer); bgmTimer = null; if (!on) return; const a = audio(); if (!a) return;
+  let step = 0; const hz = n => 440 * Math.pow(2, (n - 69) / 12);
+  bgmTimer = setInterval(() => {
+    if (document.hidden) return; tone.bgm = true;
+    const m = MEL[step % MEL.length]; if (m) tone(hz(m), .2, { type: 'square', vol: .022 });
+    if (step % 4 === 0) tone(hz(BASS[(step / 4 | 0) % BASS.length]), .4, { type: 'triangle', vol: .05 });
+    tone.bgm = false; step++;
+  }, 240);
+}
+
+/* ---------- FX ---------- */
+const cv = $('#fx'), cx = cv.getContext('2d'); let parts = [], fxRun = false;
+function fitFx() { cv.width = innerWidth * devicePixelRatio; cv.height = innerHeight * devicePixelRatio; cx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0); }
+addEventListener('resize', fitFx); fitFx();
+function burst(x, y, colors, n = 24, spd = 5) {
+  if (RM) n = Math.min(n, 6);
+  for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, v = Math.random() * spd + 1; parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 2, life: 1, c: pick(colors), s: Math.random() * 4 + 3 }); }
+  if (!fxRun) { fxRun = true; requestAnimationFrame(fxLoop); }
+}
+function confetti() { for (let i = 0; i < 6; i++) setTimeout(() => burst(Math.random() * innerWidth, innerHeight * .25, ['#ffd166', '#45d48a', '#5cc8ff', '#ff5c7a', '#b58cff'], 30, 7), i * 120); }
+function fxLoop() {
+  cx.clearRect(0, 0, innerWidth, innerHeight);
+  parts = parts.filter(p => p.life > 0);
+  for (const p of parts) { p.x += p.vx; p.y += p.vy; p.vy += .22; p.life -= .022; cx.globalAlpha = Math.max(p.life, 0); cx.fillStyle = p.c; cx.fillRect(p.x, p.y, p.s, p.s); }
+  cx.globalAlpha = 1;
+  if (parts.length) requestAnimationFrame(fxLoop); else { fxRun = false; cx.clearRect(0, 0, innerWidth, innerHeight); }
+}
+function floatText(x, y, text, color) { const e = document.createElement('div'); e.className = 'float'; e.textContent = text; e.style.left = x + 'px'; e.style.top = y + 'px'; e.style.color = color; document.body.appendChild(e); setTimeout(() => e.remove(), 1000); }
+function centerOf(elm) { const r = elm.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }
+function shakeEl(elm) { if (RM || !elm) return; elm.classList.remove('shake'); void elm.offsetWidth; elm.classList.add('shake'); }
+function vignette() { const v = $('#vig'); v.classList.add('on'); setTimeout(() => v.classList.remove('on'), 260); }
+function toast(html, ms = 2600) {
+  const live = $$('.toast'); if (live.length >= 3) live[0].remove();
+  const t = document.createElement('div'); t.className = 'toast'; t.innerHTML = html; t.setAttribute('role', 'status');
+  t.style.marginTop = ($$('.toast').length * 62) + 'px'; t.style.animationDuration = ms + 'ms';
+  document.body.appendChild(t); setTimeout(() => t.remove(), ms);
+}
+
+/* ---------- cloud: adapter = Claude artifact db, or Firebase (standalone site) ---------- */
+const GKEY = D.id.replace(/[^a-zA-Z0-9]/g, '_');
+let CLOUD = null, UID = null, ACCT = '', cloudTimer = null, boardRows = null, boardUnsub = null, boardScope = 'game', boardNote = '';
+function claudeAdapter(db, id) {
+  return { kind: 'claude',
+    onAuth(cb) { cb({ uid: id, label: '' }); },
+    async loadSave() { const s = await db.doc('data/users/' + id + '/save').get(); return s.exists ? s.data() : null; },
+    writeSave(k, state, xp) { return db.doc('data/users/' + id + '/save').set({ state, xp, at: Date.now() }); },
+    pushPlayer(k, row) { return db.doc('leaderboard/' + id).set(row); },
+    subscribeBoard(k, scope, cb, err) { return db.collection('leaderboard').orderBy('xp', 'desc').limit(50).onSnapshot(s => cb(s.docs.map(d => Object.assign({ id: d.id }, d.data()))), err); }
+  };
+}
+async function initCloud() {
+  if (window.FQ_FIREBASE_PENDING) {
+    const ad = window.FQ_FIREBASE !== undefined ? window.FQ_FIREBASE : await Promise.race([
+      new Promise(r => addEventListener('fq-firebase', e => r(e.detail), { once: true })), sleep(20000).then(() => null)]);
+    if (!ad) { boardNote = 'offline'; renderIf('rank'); renderIf('settings'); return; }
+    CLOUD = ad; ad.onAuth(onUser); return;
+  }
+  try {
+    if (!window.claude || !window.claude.use) { boardNote = 'offline'; return; }
+    const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+    const id = db && user ? await user.id() : null;
+    if (!id) { boardNote = 'offline'; renderIf('rank'); return; }
+    CLOUD = claudeAdapter(db, id); CLOUD.onAuth(onUser);
+  } catch (e) { boardNote = 'offline'; }
+}
+async function onUser(u) {
+  if (boardUnsub) { boardUnsub(); boardUnsub = null; } boardRows = null;
+  UID = u ? u.uid : null; ACCT = u ? (u.label || '') : '';
+  if (UID) {
+    let cs = null;
+    try { const d = await CLOUD.loadSave(GKEY); cs = d && d.state ? JSON.parse(d.state) : null; } catch (e) {}
+    const keep = S.settings;
+    if (S.uid && S.uid !== UID) { S = cs ? normalize(cs) : normalize({ onboarded: true }); S.settings = keep; if (cs) toast('已读取云端存档'); }
+    else if (cs && (cs.xp || 0) > S.xp) { S = normalize(cs); S.settings = keep; toast('已读取云端存档'); }
+    S.uid = UID; store.set(S); cloudSave(true); pushBoard();
+    if (!S.name && S.onboarded) setTimeout(() => toast('先到「Tetapan」取个名字，才能上排行榜'), 800);
+  }
+  renderAll(); if (VIEW === 'rank') subscribeBoard();
+}
+function cloudSave(now) {
+  if (!CLOUD || !UID) return; clearTimeout(cloudTimer);
+  cloudTimer = setTimeout(() => { Promise.resolve(CLOUD.writeSave(GKEY, JSON.stringify(S), S.xp)).catch(() => {}); }, now ? 0 : 1500);
+}
+function pushBoard() {
+  if (!CLOUD || !UID || !S.name) return;
+  const stars = Object.values(S.levels).reduce((a, l) => a + (l.stars || 0), 0);
+  Promise.resolve(CLOUD.pushPlayer(GKEY, { name: S.name.slice(0, 16), avatar: S.avatar, xp: Math.round(S.xp), lvl: lvlInfo().lv, mastered: masteredCount(), total: ALL_FIDS.length, stars, at: Date.now() }))
+    .catch(e => { if (e && (e.code === 'invalid_argument' || e.code === 'permission-denied')) { boardNote = 'readonly'; renderIf('rank'); } });
+}
+function subscribeBoard() {
+  if (!CLOUD || !UID || boardUnsub) return;
+  boardUnsub = CLOUD.subscribeBoard(GKEY, boardScope, rows => { boardRows = rows; renderIf('rank'); }, () => { boardRows = boardRows || []; renderIf('rank'); });
+}
+const AUTH_ERR = { 'auth/invalid-credential': 'Email 或密码不对。', 'auth/wrong-password': 'Email 或密码不对。', 'auth/user-not-found': '这个 email 还没注册。', 'auth/email-already-in-use': '这个 email 已经注册过了，请直接登录。',
+  'auth/weak-password': '密码至少要 6 个字。', 'auth/invalid-email': 'Email 格式不对。', 'auth/missing-password': '请输入密码。', 'auth/popup-blocked': '浏览器挡住了登录窗口，请允许弹出窗口后再试。',
+  'auth/popup-closed-by-user': '登录窗口被关掉了。', 'auth/cancelled-popup-request': '登录窗口被关掉了。', 'auth/unauthorized-domain': '这个网址还没加入 Firebase 的授权网域，请通知管理员。',
+  'auth/too-many-requests': '尝试太多次了，请过几分钟再试。', 'auth/network-request-failed': '网络连不上，请检查网络。', 'auth/operation-not-allowed': '这种登录方式还没开启，请通知管理员。' };
+function loginModal() {
+  if (!CLOUD || CLOUD.kind !== 'firebase') return;
+  modal(`<h3>登录 / 注册</h3><p class="small muted" style="margin:0 0 12px">登录后可以上排行榜，换手机或电脑进度也会跟着你。其他玩家只看得到你的昵称、头像和分数，看不到 email。</p>
+    <button class="btn" id="gBtn" style="width:100%">用 Google 登录</button>
+    <div class="small muted" style="text-align:center;margin:14px 0 8px">或者用 email 和密码</div>
+    <input type="email" id="lem" placeholder="Email" autocomplete="email" aria-label="Email">
+    <input type="password" id="lpw" placeholder="密码（至少 6 个字）" autocomplete="current-password" aria-label="密码" style="margin-top:8px">
+    <p class="small" id="lmsg" style="color:var(--ruby);margin:8px 0 0;min-height:1.2em" role="alert"></p>
+    <div class="btns" style="margin-top:6px"><button class="btn ghost" id="inBtn">登录</button><button class="btn ghost" id="upBtn">注册新账号</button><button class="btn ghost" id="fgBtn">忘记密码</button></div>
+    <p class="small muted" style="margin:12px 0 0">如果是在 WhatsApp、Instagram 等 app 里点开链接，Google 登录可能会被挡。请改用 Chrome 或 Safari 打开这个网址。</p>
+    <div class="btns"><button class="btn ghost" data-close>取消</button></div>`, box => {
+    const msg = t => { $('#lmsg', box).style.color = 'var(--ruby)'; $('#lmsg', box).textContent = t; };
+    const run = async (fn, okText) => { msg(''); $$('button', box).forEach(b => b.disabled = true);
+      try { await fn(); if (okText) { $('#lmsg', box).style.color = 'var(--emerald)'; $('#lmsg', box).textContent = okText; $$('button', box).forEach(b => b.disabled = false); } else { closeModal(); SFX.level(); toast('登录成功'); } }
+      catch (e) { msg(AUTH_ERR[e && e.code] || ('登录失败：' + ((e && e.code) || '未知错误'))); $$('button', box).forEach(b => b.disabled = false); } };
+    const em = () => $('#lem', box).value.trim(), pw = () => $('#lpw', box).value;
+    $('#gBtn', box).onclick = () => run(() => CLOUD.signInGoogle());
+    $('#inBtn', box).onclick = () => run(() => CLOUD.signInEmail(em(), pw()));
+    $('#upBtn', box).onclick = () => run(() => CLOUD.registerEmail(em(), pw()));
+    $('#fgBtn', box).onclick = () => { if (!em()) return msg('先在上面填你的 email。'); run(() => CLOUD.resetPassword(em()), '重设密码的邮件已寄出，请查看邮箱（也看看垃圾邮件）。'); };
+    $('#lpw', box).onkeydown = e => { if (e.key === 'Enter') $('#inBtn', box).click(); };
+  });
+}
+
+
+/* ---------- unlocking ---------- */
+function regionLevels(rid) { return D.levels.filter(l => l.region === rid); }
+function unlocked(L) {
+  if (S.settings.unlockAll) return true;
+  const rl = regionLevels(L.region), i = rl.indexOf(L);
+  return i === 0 || lstate(rl[i - 1].id).stars > 0;
+}
+const bossUnlocked = () => S.settings.unlockAll || D.levels.every(l => lstate(l.id).stars > 0);
+
+/* ---------- badges ---------- */
+const BADGES = [
+  { id: 'first', ms: 'Langkah Pertama', zh: '第一次打败怪物', test: () => S.stats.battles > 0 },
+  { id: 'perfect', ms: 'Tanpa Cela', zh: '任何一关拿 3 星', test: () => S.stats.perfect > 0 },
+  { id: 'combo10', ms: 'Ribut Combo', zh: '一场里连击 10 次', test: () => S.stats.maxCombo >= 10 },
+  { id: 'comeback', ms: 'Nyawa Terakhir', zh: '只剩 1 颗心时赢下一关', test: () => S.stats.comeback > 0 },
+  { id: 'typist', ms: 'Jari Emas', zh: '默写答对 20 次', test: () => S.stats.typed >= 20 },
+  { id: 'detective', ms: 'Detektif Kes', zh: '个案找 KK 答对 15 次', test: () => S.stats.kk >= 15 },
+  { id: 'r1', ms: 'Penakluk Lembah', zh: '通关 1.1 全部关卡', test: () => regionLevels('r1').every(l => lstate(l.id).stars > 0) },
+  { id: 'r2', ms: 'Penakluk Kota', zh: '通关 1.2 全部关卡', test: () => regionLevels('r2').every(l => lstate(l.id).stars > 0) },
+  { id: 'boss', ms: 'Pembunuh Raja', zh: '打败 Bab Boss', test: () => S.stats.boss > 0 },
+  { id: 'm25', ms: 'Pengumpul Kad', zh: '掌握 25 个 fakta', test: () => masteredCount() >= 25 },
+  { id: 'mall', ms: 'Ensiklopedia Bab', zh: '掌握全部 fakta', test: () => masteredCount() === ALL_FIDS.length },
+  { id: 'cards10', ms: 'Ahli Strategi', zh: '使用 10 张道具卡', test: () => S.stats.cardsUsed >= 10 },
+  { id: 'streak3', ms: 'Api Semangat', zh: '连续 3 天学习', test: () => S.streak.count >= 3 },
+  { id: 'owl', ms: 'Burung Hantu', zh: '晚上 11 点后还在练', test: () => S.stats.owl > 0 }
+];
+function checkBadges() {
+  BADGES.forEach(b => { if (!S.badges[b.id] && b.test()) { S.badges[b.id] = Date.now(); SFX.badge(); toast(`${badgeSvg(true, 22)} 获得徽章：<span style="color:var(--gold)">${esc(b.ms)}</span>`); } });
+}
+function badgeSvg(on, size = 46) { return `<svg viewBox="0 0 32 32" width="${size}" height="${size}" style="vertical-align:middle"><path d="m16 2 4 4h6v6l4 4-4 4v6h-6l-4 4-4-4H6v-6l-4-4 4-4V6h6z" fill="${on ? '#ffd166' : '#33406e'}" stroke="#0f1020"/><circle cx="16" cy="16" r="6" fill="${on ? '#f4a73b' : '#232a50'}"/></svg>`; }
+
+/* ---------- streak ---------- */
+const dayStr = d => d.toLocaleDateString('en-CA');
+function touchStreak() {
+  const today = dayStr(new Date()); if (S.streak.last === today) return;
+  const y = new Date(); y.setDate(y.getDate() - 1);
+  S.streak.count = S.streak.last === dayStr(y) ? S.streak.count + 1 : 1; S.streak.last = today;
+}
+
+/* ---------- views ---------- */
+let VIEW = 'map';
+const NAV = [['map', 'Peta', IC.map], ['album', 'Album', IC.album], ['badges', 'Lencana', IC.badge], ['rank', 'Ranking', IC.rank], ['settings', 'Tetapan', IC.gear]];
+function renderAll() { renderHud(); renderNav(); renderView(); }
+function renderIf(v) { if (VIEW === v && $('#battle').hidden) renderView(); }
+function renderHud() {
+  const li = lvlInfo();
+  $('#hud').innerHTML = `<div class="row">
+    <div class="ava"><img class="sprite" alt="" src="${avatarImg(S.avatar)}"></div>
+    <div class="who"><div class="name">${esc(S.name || 'Pengembara')}</div><div class="title">${esc(titleFor(li.lv))} · ${S.xp} XP</div>
+      <div class="xpbar" title="${li.into}/${li.span} XP"><i style="width:${Math.round(li.pct * 100)}%"></i></div></div>
+    <div class="lvl">${li.lv}<small>Lv</small></div>
+    <span class="chip" title="连续学习天数">${IC.flame.replace('<svg', '<svg width="16" height="16"')} ${S.streak.count}</span>
+    <button class="iconbtn" id="sndBtn" aria-label="${S.settings.sfx ? '关闭音效' : '开启音效'}">${IC.sound(S.settings.sfx)}</button>
+  </div>`;
+  $('#sndBtn').onclick = () => { S.settings.sfx = !S.settings.sfx; if (S.settings.sfx) SFX.click(); save(); renderHud(); };
+}
+function renderNav() {
+  $('#nav').innerHTML = NAV.map(([id, label, ic]) => `<button data-v="${id}" ${VIEW === id ? 'aria-current="page"' : ''}>${ic}<span>${label}</span></button>`).join('');
+  $$('#nav button').forEach(b => b.onclick = () => { SFX.click(); VIEW = b.dataset.v; if (VIEW === 'rank') subscribeBoard(); renderNav(); renderView(); scrollTo(0, 0); });
+}
+function renderView() {
+  const v = $('#view');
+  if (VIEW === 'map') v.innerHTML = mapHtml(), bindMap();
+  else if (VIEW === 'album') v.innerHTML = albumHtml(), bindAlbum();
+  else if (VIEW === 'badges') v.innerHTML = badgesHtml();
+  else if (VIEW === 'rank') v.innerHTML = rankHtml(), bindRank();
+  else v.innerHTML = settingsHtml(), bindSettings();
+}
+
+/* map */
+function nodeHtml(L, i, n, isBoss) {
+  const st = isBoss ? { stars: S.stats.boss ? 3 : 0 } : lstate(L.id), open = isBoss ? bossUnlocked() : unlocked(L);
+  const ids = isBoss ? ALL_FIDS : L.facts.map(f => f.id), m = masteredCount(ids);
+  const mon = isBoss ? D.boss.monster : L.monster;
+  const x = n === 1 ? 50 : (i % 2 === 0 ? 26 : 74) + (i % 4 === 1 ? 0 : 0), y = 70 + i * 128;
+  const cls = ['node', open ? 'open' : 'locked', st.stars ? 'cleared' : ''].join(' ');
+  return `<button class="${cls}" data-id="${isBoss ? 'boss' : L.id}" style="left:${x}%;top:${y}px" ${open ? '' : 'aria-disabled="true"'} aria-label="${esc((isBoss ? D.boss.title : L.title) + (open ? '' : '（未解锁）'))}">
+    <span class="disc"><img class="sprite" alt="" src="${sprite(mon.sprite, mon.hue)}">${open ? '' : `<span class="lock">${IC.lock}</span>`}</span>
+    <span class="code">${isBoss ? 'BOSS' : L.code}</span>
+    <span class="label">${esc(isBoss ? D.boss.title : L.title)}</span>
+    <span class="stars">${[1, 2, 3].map(k => IC.star(st.stars >= k)).join('')}</span>
+    <span class="mring">掌握 ${m}/${ids.length}</span></button>`;
+}
+function mapHtml() {
+  const next = D.levels.find(l => unlocked(l) && !lstate(l.id).stars);
+  let h = `<div class="card" style="margin:4px 0 14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+    <div style="flex:1;min-width:200px"><div class="pix" style="font-size:20px;color:var(--gold)">${esc(D.chapter)} · ${esc(D.title)}</div>
+    <div class="small muted">${esc(D.course)} · 已掌握 ${masteredCount()}/${ALL_FIDS.length} 个 fakta${S.review.length ? ` · 复习清单 ${S.review.length} 个` : ''}</div></div>
+    ${next ? `<button class="btn" id="contBtn">继续冒险：${esc(next.title)}</button>` : ''}
+    ${S.review.length ? `<button class="btn ghost" id="revBtn">复习被跳过的 fakta</button>` : ''}</div>`;
+  D.regions.forEach(R => {
+    const ls = regionLevels(R.id), H = 70 + (ls.length - 1) * 128 + 90;
+    const pts = ls.map((L, i) => [ls.length === 1 ? 50 : (i % 2 === 0 ? 26 : 74), 70 + i * 128 - 46]);
+    h += `<section class="region"><div class="rhead"><h2>${esc(R.code)} ${esc(R.name)}</h2><span>${esc(R.blurb)}</span></div>
+      <div class="trail" style="height:${H}px"><svg class="path" viewBox="0 0 100 ${H}" preserveAspectRatio="none"><polyline points="${pts.map(p => p.join(',')).join(' ')}" fill="none" stroke="#33406e" stroke-width="6" stroke-dasharray="2 10" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>
+      ${ls.map((L, i) => nodeHtml(L, i, ls.length)).join('')}</div></section>`;
+  });
+  h += `<section class="region"><div class="rhead"><h2>Kubu Raja</h2><span>计时 Boss 战 · 混合全部 fakta · 通关所有关卡后开启</span></div>
+    <div class="trail" style="height:200px">${nodeHtml(D.boss, 0, 1, true)}</div></section>`;
+  return h;
+}
+function bindMap() {
+  $$('.node').forEach(b => b.onclick = () => {
+    SFX.click(); const id = b.dataset.id;
+    if (id === 'boss') { if (!bossUnlocked()) return toast('先把所有关卡至少打到 1 星'); return levelModal(null); }
+    const L = LV(id); if (!unlocked(L)) return toast('先通过前一关来解锁');
+    levelModal(L);
+  });
+  const nb = D.levels.find(l => unlocked(l) && !lstate(l.id).stars); if (nb) { const n = $(`.node[data-id="${nb.id}"]`); n && n.classList.add('next'); }
+  const c = $('#contBtn'); if (c) c.onclick = () => levelModal(nb);
+  const r = $('#revBtn'); if (r) r.onclick = () => startBattle(null, 'review');
+}
+function levelModal(L) {
+  const isBoss = !L, ids = isBoss ? ALL_FIDS : L.facts.map(f => f.id), st = isBoss ? null : lstate(L.id);
+  const modes = isBoss ? '计时混合题' : L.groupMode ? '归类选择题、反向选择题' : ['选择题', '反向选择', '拖拽配对', '默写', L.cases ? '个案找 KK' : null, L.ordered ? '排序技能' : null].filter(Boolean).join('、');
+  modal(`<h3>${esc(isBoss ? D.boss.title : L.title)}</h3>
+    <div class="muted small">${esc(isBoss ? D.boss.topic : L.code + ' · ' + L.topic)}</div>
+    <div class="stat3"><div><b>${ids.length}</b><span>fakta</span></div><div><b>${masteredCount(ids)}</b><span>已掌握</span></div><div><b>${isBoss ? (S.stats.boss ? '胜' : '—') : st.stars + '★'}</b><span>${isBoss ? '战绩' : '最佳'}</span></div></div>
+    <p class="small muted" style="margin:0">玩法：${modes}。每个 fakta 在两种不同玩法里答对，才算「掌握」并解锁图鉴卡。</p>
+    ${isBoss ? `<p class="small" style="margin:8px 0 0">每题 ${D.boss.seconds} 秒，超时算答错。</p>` : ''}
+    <div class="btns"><button class="btn" data-go>开战</button><button class="btn ghost" data-study>先看 fakta 列表</button><button class="btn ghost" data-close>返回</button></div>`, box => {
+    $('[data-go]', box).onclick = () => { closeModal(); startBattle(L, isBoss ? 'boss' : 'level'); };
+    $('[data-study]', box).onclick = () => studyModal(L);
+  });
+}
+function studyModal(L) {
+  const facts = L ? L.facts : ALL_FIDS.map(id => FACTS[id]);
+  modal(`<h3>${esc(L ? L.title : 'Semua fakta')}</h3><div class="muted small">${L && L.groupMode ? '左边是元素，右边是它所属的 RP 部分。' : '先读一遍，再开战。绿色 = 已掌握。'}</div>
+    <div class="facts-list">${facts.map(f => `<div><b class="${mastered(f.id) ? 'ok' : ''}">${esc(f.f)}</b><span class="small muted">${esc(f.h)}</span>${f.c ? `<div class="small" style="color:var(--emerald)">Contoh: ${esc(f.c)}</div>` : ''}</div>`).join('')}</div>
+    <div class="btns">${L ? '<button class="btn" data-go>开战</button>' : ''}<button class="btn ghost" data-close>关闭</button></div>`, box => {
+    const g = $('[data-go]', box); if (g) g.onclick = () => { closeModal(); startBattle(L, 'level'); };
+  });
+}
+
+/* album */
+function albumHtml() {
+  let h = `<div class="sec-title">图鉴 Album</div><p class="small muted" style="margin:0 0 10px">每个 fakta 在两种不同玩法答对就能收集到这张卡。点卡片翻面看 huraian。已收集 ${masteredCount()}/${ALL_FIDS.length}。</p>`;
+  D.levels.forEach(L => {
+    h += `<div class="pix" style="margin:12px 0 6px;color:var(--muted)">${esc(L.code)} ${esc(L.title)} · ${masteredCount(L.facts.map(f => f.id))}/${L.facts.length}</div><div class="album">`;
+    L.facts.forEach(f => {
+      const got = mastered(f.id), m = (S.facts[f.id] || { m: [] }).m.length;
+      h += `<button class="acard ${got ? 'got' : 'locked'}" data-f="${f.id}" aria-label="${esc(got ? f.f : '未收集的卡')}"><span class="in">
+        <span class="fc fr"><span class="lv">${esc(L.code)}</span><b>${got ? esc(f.f) : '？？？'}</b><span class="dots"><i class="${m >= 1 ? 'on' : ''}"></i><i class="${m >= 2 ? 'on' : ''}"></i></span></span>
+        <span class="fc bk">${got ? esc(f.h) + (f.c ? `<br><span style="color:var(--emerald)">Contoh: ${esc(f.c)}</span>` : '') : '还没收集。在两种不同玩法里答对这个 fakta 就能解锁。'}</span></span></button>`;
+    });
+    h += '</div>';
+  });
+  return h;
+}
+function bindAlbum() { $$('.acard').forEach(b => b.onclick = () => { SFX.card(); b.classList.toggle('flip'); }); }
+
+function badgesHtml() {
+  const got = BADGES.filter(b => S.badges[b.id]).length;
+  return `<div class="sec-title">徽章 Lencana</div><p class="small muted" style="margin:0 0 10px">已获得 ${got}/${BADGES.length}</p>
+  <div class="badges">${BADGES.map(b => `<div class="badge ${S.badges[b.id] ? 'got' : 'no'}">${badgeSvg(!!S.badges[b.id])}<b>${esc(b.ms)}</b><span>${esc(b.zh)}</span></div>`).join('')}</div>`;
+}
+function rankHtml() {
+  let h = `<div class="sec-title">排行榜 Ranking</div>`;
+  if (!CLOUD) return h + `<div class="card small">${window.FQ_FIREBASE_PENDING ? (boardNote === 'offline' ? '连不上排行榜服务器。检查网络后重新打开页面；你的进度会先存在这台设备上。' : '连接中…') : '排行榜要在 claude.ai 里打开这个页面并登录才会显示。你的进度会先存在这台设备上。'}</div>`;
+  if (!UID) return h + `<div class="card"><p style="margin:0 0 12px">登录后才能看排行榜和上榜。登录也会把进度存到云端，换手机或电脑都能接着玩。</p><button class="btn" id="loginBtn">登录 / 注册</button></div>`;
+  if (CLOUD.kind === 'firebase') h += `<div class="tabs" role="group" aria-label="排行榜范围"><button data-scope="game" aria-pressed="${boardScope === 'game'}">本章 · ${esc(D.chapter)}</button><button data-scope="all" aria-pressed="${boardScope === 'all'}">全部章节</button></div>`;
+  if (!S.name) h += `<div class="card small" style="margin-bottom:10px">先在「Tetapan」里取个名字，你的分数才会上榜。</div>`;
+  if (boardNote === 'readonly') h += `<div class="card small" style="margin-bottom:10px">${CLOUD.kind === 'claude' ? '你目前只有查看权限，分数暂时上不了榜。请分享者把你设为 Contributor。' : '分数上传被拒绝了。请重新登录后再试。'}</div>`;
+  if (!boardRows) return h + `<div class="card small">读取中…</div>`;
+  if (!boardRows.length) return h + `<div class="card small">还没有人上榜。打赢一关，你就是第一名。</div>`;
+  return h + `<div class="rank">${boardRows.map((r, i) => `<div class="rrow ${r.id === UID ? 'me' : ''}"><span class="n">${i + 1}</span><img class="sprite" alt="" src="${avatarImg(r.avatar | 0)}">
+    <span class="nm"><b>${esc(r.name || 'Pengembara')}${r.id === UID ? '（你）' : ''}</b><span>${r.sub ? esc(r.sub) : `Lv ${r.lvl | 0} · 掌握 ${r.mastered | 0}/${r.total | 0} · ${r.stars | 0}★`}</span></span><span class="xp">${r.xp | 0}</span></div>`).join('')}</div>`;
+}
+function bindRank() {
+  const lb = $('#loginBtn'); if (lb) lb.onclick = loginModal;
+  $$('[data-scope]').forEach(b => b.onclick = () => { if (boardScope === b.dataset.scope) return; SFX.click(); boardScope = b.dataset.scope; if (boardUnsub) { boardUnsub(); boardUnsub = null; } boardRows = null; subscribeBoard(); renderView(); });
+}
+function settingsHtml() {
+  const acct = CLOUD && CLOUD.kind === 'firebase' ? `<div class="card"><b>账号</b><p class="small muted" style="margin:4px 0 10px">${UID ? '已登录：' + esc(ACCT || '（Google 账号）') + '<br>进度会自动存到云端。' : '未登录。登录后进度会存到云端，换设备也能接着玩，还能上排行榜。'}</p>${UID ? '<button class="btn ghost" id="logoutBtn">登出</button>' : '<button class="btn" id="loginBtn">登录 / 注册</button>'}</div>` : '';
+  return `<div class="sec-title">设置 Tetapan</div><div class="set">${acct}
+    <div class="card"><b>名字和头像</b><input type="text" id="nm" maxlength="16" value="${esc(S.name)}" placeholder="你的名字" style="margin-top:8px">
+      <div class="avatars">${AVATARS.map((a, i) => `<button data-a="${i}" aria-pressed="${S.avatar === i}"><img class="sprite" alt="" src="${avatarImg(i)}">${a.n}</button>`).join('')}</div>
+      <button class="btn" id="saveName">保存</button></div>
+    <label class="toggle"><span><b>音效</b><br><span class="small muted">答对、连击、升级的声音</span></span><input type="checkbox" id="t-sfx" ${S.settings.sfx ? 'checked' : ''}></label>
+    <label class="toggle"><span><b>背景音乐</b><br><span class="small muted">8-bit 冒险配乐</span></span><input type="checkbox" id="t-bgm" ${S.settings.bgm ? 'checked' : ''}></label>
+    <label class="toggle"><span><b>解锁全部关卡</b><br><span class="small muted">复习用：可以直接跳到任何关卡</span></span><input type="checkbox" id="t-unl" ${S.settings.unlockAll ? 'checked' : ''}></label>
+    <div class="card small"><b>键盘快捷键（电脑）</b><br><kbd>1</kbd>–<kbd>4</kbd> 选答案 · <kbd>Enter</kbd> 提交 / 下一题 · <kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd><kbd>R</kbd><kbd>T</kbd><kbd>Y</kbd> 使用道具卡 · <kbd>Esc</kbd> 撤退</div>
+    <div class="card small"><b>规则</b><br>答错扣 1 颗心，答错的题过几题会再出现。道具卡只影响血量、XP 和时间，不影响「掌握」：每个 fakta 都要在两种玩法里答对才算掌握。用「重击」跳过的 fakta 会进复习清单。</div>
+    <button class="btn danger" id="reset">重置全部进度</button></div>`;
+}
+function bindSettings() {
+  const lb = $('#loginBtn'); if (lb) lb.onclick = loginModal;
+  const lo = $('#logoutBtn'); if (lo) lo.onclick = async () => { try { await CLOUD.signOut(); toast('已登出。这台设备上的进度还在，下次登录会自动同步。'); } catch (e) {} };
+  $$('.avatars button').forEach(b => b.onclick = () => { SFX.click(); $$('.avatars button').forEach(x => x.setAttribute('aria-pressed', x === b)); });
+  $('#saveName').onclick = () => { const n = $('#nm').value.trim().slice(0, 16); if (!n) return toast('名字不能空白'); S.name = n; S.avatar = +($('.avatars [aria-pressed="true"]') || { dataset: { a: 0 } }).dataset.a; save(); pushBoard(); renderHud(); toast('已保存'); };
+  $('#t-sfx').onchange = e => { S.settings.sfx = e.target.checked; save(); renderHud(); };
+  $('#t-bgm').onchange = e => { S.settings.bgm = e.target.checked; bgm(S.settings.bgm); save(); };
+  $('#t-unl').onchange = e => { S.settings.unlockAll = e.target.checked; save(); };
+  $('#reset').onclick = () => modal(`<h3>重置全部进度？</h3><p class="muted">XP、星星、掌握的 fakta、徽章和道具卡都会清空，不能复原。</p><div class="btns"><button class="btn danger" data-yes>确定重置</button><button class="btn ghost" data-close>取消</button></div>`, box => {
+    $('[data-yes]', box).onclick = () => { const keep = { name: S.name, avatar: S.avatar, onboarded: true, uid: S.uid }; S = normalize(keep); save(); closeModal(); renderAll(); toast('进度已重置'); };
+  });
+}
+
+/* modal helper */
+let modalKey = null;
+function modal(html, bind) {
+  closeModal(); const m = document.createElement('div'); m.className = 'modal'; m.id = 'modal'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true');
+  m.innerHTML = `<div class="box">${html}</div>`; document.body.appendChild(m);
+  $$('[data-close]', m).forEach(b => b.onclick = () => { SFX.click(); closeModal(); });
+  bind && bind(m); const f = $('button,input', m); f && f.focus({ preventScroll: true });
+}
+function closeModal() { const m = $('#modal'); m && m.remove(); modalKey = null; }
+
+/* ---------- onboarding ---------- */
+function onboarding() {
+  let av = 0;
+  modal(`<h3>欢迎来到 Fakta Quest</h3><p class="muted small" style="margin:0 0 10px">${esc(D.course)} · ${esc(D.chapter)} ${esc(D.title)}。答对题目就能打怪升级。</p>
+    <input type="text" id="obName" maxlength="16" placeholder="冒险者的名字" aria-label="名字">
+    <div class="avatars">${AVATARS.map((a, i) => `<button data-a="${i}" aria-pressed="${i === 0}"><img class="sprite" alt="" src="${avatarImg(i)}">${a.n}</button>`).join('')}</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div class="tut">${IC.heart()}<div class="small"><b>打怪就是答题。</b>每答对一个 fakta，怪物扣 1 格血。答错扣你 1 颗心，那题过几题会再出现。</div></div>
+      <div class="tut">${CARD_ICON.smash}<div class="small"><b>过关选道具卡。</b>回血、护盾、提示、重击……战斗中随时使用。连击越高，越容易抽到稀有卡。</div></div>
+      <div class="tut">${CARD_ICON.double}<div class="small"><b>掌握 = 两种玩法都答对。</b>选择题、配对、默写、个案找 KK，每个 fakta 答对两种就收进图鉴。</div></div>
+    </div>
+    <div class="btns"><button class="btn" id="obGo">出发冒险</button></div>`, box => {
+    box.dataset.lock = '1';
+    $$('.avatars button', box).forEach(b => b.onclick = () => { audio(); SFX.click(); av = +b.dataset.a; $$('.avatars button', box).forEach(x => x.setAttribute('aria-pressed', x === b)); });
+    const go = () => { const n = $('#obName', box).value.trim().slice(0, 16); if (!n) { shakeEl($('#obName', box)); return; } audio(); SFX.level(); S.name = n; S.avatar = av; S.onboarded = true; save(); pushBoard(); closeModal(); renderAll(); confetti(); };
+    $('#obGo', box).onclick = go; $('#obName', box).onkeydown = e => { if (e.key === 'Enter') go(); };
+  });
+}
+
+/* ================= BATTLE ================= */
+let B = null;
+const MODE_ZH = { mcqF: '选择题', mcqH: '反向选择', type: '默写', match: '配对', kk: '个案找 KK', gF: '归类', gH: '反向归类', order: '排序技能' };
+const caseOf = fid => { const L = LEVEL_OF[fid]; if (!L.cases) return null; for (const c of L.cases) { const it = c.items.find(i => i.fid === fid); if (it) return { c, it }; } return null; };
+function modesFor(fid) { const L = LEVEL_OF[fid]; if (L.groupMode) return ['gF', 'gH']; const m = ['mcqF', 'mcqH', 'type', 'match']; if (caseOf(fid)) m.push('kk'); return m; }
+
+function startBattle(L, kind) {
+  audio(); touchStreak();
+  let ids, hp, name, mon;
+  if (kind === 'boss') {
+    const pool = ALL_FIDS.filter(id => !LEVEL_OF[id].groupMode);
+    const weak = shuffle(pool.filter(id => !mastered(id))), strong = shuffle(pool.filter(mastered));
+    ids = shuffle([...S.review.filter(id => pool.includes(id)), ...weak, ...strong].filter((v, i, a) => a.indexOf(v) === i).slice(0, D.boss.hp));
+    hp = ids.length; name = D.boss.monster.name; mon = D.boss.monster;
+  } else if (kind === 'review') {
+    ids = shuffle(S.review.slice()); hp = ids.length; name = 'Bayang Lupa'; mon = { sprite: 'ghost', hue: 230 };
+  } else { ids = shuffle(L.facts.map(f => f.id)); hp = ids.length; name = L.monster.name; mon = L.monster; }
+  if (!ids.length) return toast('这里没有要复习的 fakta');
+  B = { L, kind, queue: ids, total: ids.length, hp, maxHp: hp, hearts: 3, maxHearts: 3, combo: 0, maxCombo: 0, correct: 0, wrong: 0, covered: new Set(), skipped: [],
+    flags: { shield: false, guard: false, double: 0 }, xp: 0, newM: [], missed: new Set(), orderDone: !(L && L.ordered), q: null, mon, name, busy: false, timer: null, tLeft: 0, half: false, used: 0 };
+  const bt = $('#battle'); bt.hidden = false; document.body.style.overflow = 'hidden';
+  renderBattle(); nextQ();
+}
+function renderBattle() {
+  const title = B.kind === 'boss' ? D.boss.title : B.kind === 'review' ? '复习战' : `${B.L.code} ${B.L.title}`;
+  $('#battle').innerHTML = `<div class="bwrap" id="bwrap">
+    <div class="btop"><button class="iconbtn" id="flee" aria-label="撤退">${IC.x}</button>
+      <div class="lt"><b>${esc(title)}</b><span class="small muted" id="prog"></span></div>
+      <div class="hearts" id="hearts" aria-live="polite"></div></div>
+    <div class="stage" id="stage">
+      <div class="mhp"><div class="nm"><span>${esc(B.name)}</span><span id="hpTxt"></span></div><div class="bar"><i id="hpBar"></i></div></div>
+      <img class="sprite monster" id="mon" alt="${esc(B.name)}" src="${sprite(B.mon.sprite, B.mon.hue)}">
+      <div class="flags" id="flags"></div>
+      <div class="combo" id="combo"></div>
+    </div>
+    ${B.kind === 'boss' ? '<div class="timer"><i id="tbar"></i></div>' : ''}
+    <div class="qbox" id="qbox" aria-live="polite"></div>
+    <div><div class="tray" id="tray"></div><div class="trayhint" id="trayhint"></div></div>
+  </div>`;
+  $('#flee').onclick = fleeAsk; updBattle();
+}
+function updBattle() {
+  if (!B) return;
+  $('#hearts').innerHTML = Array.from({ length: B.maxHearts }, (_, i) => `<span class="${i < B.hearts ? '' : 'lost'}">${IC.heart()}</span>`).join('');
+  $('#hpBar').style.width = Math.max(0, B.hp / B.maxHp * 100) + '%'; $('#hpTxt').textContent = `${Math.max(0, B.hp)}/${B.maxHp}`;
+  $('#prog').textContent = `已答对 ${B.covered.size}/${B.total} · +${Math.round(B.xp)} XP`;
+  const c = $('#combo'); c.className = 'combo ' + (B.combo >= 10 ? 't3' : B.combo >= 5 ? 't2' : B.combo >= 2 ? 't1' : '');
+  c.innerHTML = B.combo >= 2 ? `<b>${B.combo}×</b><span>COMBO · XP ×${mult().toFixed(1)}</span>` : '';
+  const fl = []; if (B.flags.shield) fl.push('护盾'); if (B.flags.guard) fl.push('连击守护'); if (B.flags.double) fl.push(`双倍 ×${B.flags.double}`);
+  $('#flags').innerHTML = fl.map(t => `<span class="chip">${t}</span>`).join('');
+  renderTray();
+}
+const mult = () => 1 + Math.min(B.combo, 10) * .1;
+
+/* tray */
+function usable(id) {
+  const q = B.q; if (!q || B.busy) return false;
+  switch (id) {
+    case 'heal': return B.hearts < B.maxHearts;
+    case 'iron': return true;
+    case 'shield': return !B.flags.shield;
+    case 'guard': return !B.flags.guard;
+    case 'double': return !B.flags.double;
+    case 'hint': return q.type === 'type' && !q.hint;
+    case 'fifty': return q.type === 'mcq' && !q.fifty && q.options.length > 2;
+    case 'peek': return ['mcq', 'type'].includes(q.type) && !q.peek;
+    case 'smash': return B.hp > 0;
+    case 'freeze': return B.kind === 'boss' && !!B.timer;
+  } return false;
+}
+function renderTray() {
+  const keys = 'QWERTY';
+  $('#tray').innerHTML = S.inventory.map((id, i) => { const c = CARDS[id]; return `<button class="pcard ${c.rar}" data-i="${i}" ${usable(id) ? '' : 'disabled'} title="${esc(c.desc)}">${CARD_ICON[id]}<span>${c.zh}</span><span class="kb">${keys[i] || ''}</span></button>`; }).join('') || '<span class="trayhint">还没有道具卡。过关后可以选一张。</span>';
+  $('#trayhint').textContent = S.inventory.length ? '道具卡：点一下就使用。灰色 = 这题用不了。' : '';
+  $$('#tray .pcard').forEach(b => b.onclick = () => useCard(+b.dataset.i));
+}
+function useCard(i) {
+  const id = S.inventory[i]; if (!id || !usable(id)) return;
+  S.inventory.splice(i, 1); S.stats.cardsUsed++; B.used++; SFX.card();
+  const [x, y] = centerOf($('#stage'));
+  switch (id) {
+    case 'heal': B.hearts = Math.min(B.maxHearts, B.hearts + 1); SFX.heal(); burst(x, y, ['#ff5c7a', '#ffd166'], 20); break;
+    case 'iron': B.maxHearts++; B.hearts = Math.min(B.maxHearts, B.hearts + 1); SFX.heal(); break;
+    case 'shield': B.flags.shield = true; break;
+    case 'guard': B.flags.guard = true; break;
+    case 'double': B.flags.double = 3; break;
+    case 'hint': { B.q.hint = true; const f = FACTS[B.q.fid].f; $('#hintline').textContent = f.split(' ').map(w => w[0] + '·'.repeat(Math.max(0, w.length - 1))).join('  '); break; }
+    case 'fifty': { B.q.fifty = true; B.q.half = true; const wrong = $$('#qbox .opt').filter(o => o.dataset.ok !== '1'); shuffle(wrong).slice(0, Math.min(2, wrong.length - 0)).forEach(o => { o.disabled = true; o.classList.add('gone'); }); break; }
+    case 'peek': { B.q.peek = true; B.q.half = true; const ans = B.q.type === 'type' ? FACTS[B.q.fid].f : B.q.options.find(o => o.ok).text; const p = document.createElement('div'); p.className = 'fb ok'; p.innerHTML = `<span class="t">透视：</span><span class="f">${esc(ans)}</span>`; $('#qbox').appendChild(p); setTimeout(() => p.remove(), 3000); break; }
+    case 'smash': {
+      const dmg = Math.min(2, B.hp); B.hp -= dmg; hitMonster(dmg, '#ff9f43');
+      const unc = B.queue.filter((v, k, a) => !B.covered.has(v) && a.indexOf(v) === k && v !== (B.q.fid || (B.q.fids || [])[0]));
+      const skip = unc.slice(-dmg); skip.forEach(s => { B.skipped.push(s); B.queue = B.queue.filter(v => v !== s); B.total--; });
+      if (skip.length) toast(`跳过的 fakta 已放进复习清单：${skip.map(s => esc(FACTS[s].f)).join('、')}`, 3200);
+      if (B.hp <= 0) { updBattle(); return setTimeout(victory, 700); } break;
+    }
+    case 'freeze': B.tLeft += 10; break;
+  }
+  save(); updBattle();
+}
+
+/* question building */
+function chooseMode(fid) {
+  const fs = fstate(fid), avail = modesFor(fid), notYet = avail.filter(m => !fs.m.includes(m));
+  if (LEVEL_OF[fid].groupMode) return notYet.length ? notYet[0] : pick(avail);
+  if (B.kind === 'boss') return pick(['mcqF', 'mcqH', 'type', caseOf(fid) ? 'kk' : 'mcqF']);
+  if (fs.c === 0) return Math.random() < .25 && B.queue.length >= 3 ? 'match' : (caseOf(fid) && Math.random() < .3 ? 'kk' : 'mcqF');
+  const pool = notYet.length ? notYet : avail; return pick(pool);
+}
+function distractors(fid, n, field) {
+  const f = FACTS[fid], L = LEVEL_OF[fid];
+  let pool = L.facts.filter(x => x.id !== fid && x[field] !== f[field]);
+  if (pool.length < n) pool = pool.concat(ALL_FIDS.map(id => FACTS[id]).filter(x => x.id !== fid && !LEVEL_OF[x.id].groupMode && x[field] !== f[field] && !pool.includes(x)));
+  return shuffle(pool).slice(0, n).map(x => x[field]);
+}
+function nextQ() {
+  if (!B) return; clearTimer();
+  if (B.hp <= 0) return victory();
+  if (B.hearts <= 0) return defeat();
+  if (!B.queue.length) return victory();
+  if (!B.orderDone && B.hp <= B.maxHp / 2 && B.kind === 'level') { B.orderDone = true; return showOrder(); }
+  const fid = B.queue[0], mode = chooseMode(fid), f = FACTS[fid], L = LEVEL_OF[fid];
+  let q;
+  if (mode === 'match') {
+    const fids = B.queue.filter((v, i, a) => a.indexOf(v) === i && !LEVEL_OF[v].groupMode).slice(0, 4);
+    if (fids.length < 3) q = mcqF(fid); else q = { type: 'match', mode, fids };
+  } else if (mode === 'type') q = { type: 'type', mode, fid };
+  else if (mode === 'kk') { const co = caseOf(fid); const others = shuffle(co.c.items.filter(i => i.fid !== fid)).slice(0, 3); q = { type: 'mcq', mode, fid, caseName: co.c.name, prompt: `Ayat kes manakah menunjukkan <em>${esc(f.f)}</em>?`, options: shuffle([{ text: co.it.text, ok: true }, ...others.map(o => ({ text: o.text, ok: false }))]) }; }
+  else if (mode === 'mcqH') q = { type: 'mcq', mode, fid, prompt: `Huraian manakah tepat untuk <em>${esc(f.f)}</em>?`, options: shuffle([{ text: f.h, ok: true }, ...distractors(fid, 3, 'h').map(t => ({ text: t, ok: false }))]) };
+  else if (mode === 'gF') { const groups = [...new Set(L.facts.map(x => x.h))]; const extra = shuffle(['Kesimpulan', 'Lampiran', 'Pengenalan', 'Objektif'].filter(g => !groups.includes(g))).slice(0, Math.max(0, 4 - groups.length)); q = { type: 'mcq', mode, fid, prompt: `<em>${esc(f.f)}</em> ialah elemen dalam bahagian RP yang mana?`, options: shuffle([...groups, ...extra].map(g => ({ text: g, ok: g === f.h }))) }; }
+  else if (mode === 'gH') { const others = shuffle(L.facts.filter(x => x.h !== f.h)).slice(0, 3); q = { type: 'mcq', mode, fid, prompt: `Yang manakah elemen dalam <em>${esc(f.h)}</em>?`, options: shuffle([{ text: f.f, ok: true }, ...others.map(o => ({ text: o.f, ok: false }))]) }; }
+  else q = mcqF(fid);
+  B.q = q; renderQ();
+  if (B.kind === 'boss') startTimer(q.type === 'type' ? D.boss.seconds + 10 : q.type === 'match' ? D.boss.seconds * 2 : D.boss.seconds);
+}
+function mcqF(fid) { const f = FACTS[fid]; return { type: 'mcq', mode: 'mcqF', fid, prompt: `Fakta manakah sepadan dengan huraian ini?<br><span style="font-weight:600;color:var(--ink)">“${esc(f.h)}”</span>`, options: shuffle([{ text: f.f, ok: true }, ...distractors(fid, 3, 'f').map(t => ({ text: t, ok: false }))]) }; }
+const topicOf = fid => esc(LEVEL_OF[fid].topic);
+
+function renderQ() {
+  const q = B.q, box = $('#qbox'); B.busy = false;
+  const tag = `<div class="qtag"><span>${MODE_ZH[q.mode]}</span>${q.caseName ? `<span class="chip">${IC.book.replace('<svg', '<svg width="14" height="14"')} ${esc(q.caseName)}</span>` : ''}<span class="chip">${topicOf(q.fid || q.fids[0])}</span></div>`;
+  if (q.type === 'mcq') {
+    box.innerHTML = tag + `<div class="qp">${q.prompt}</div><div class="opts">${q.options.map((o, i) => `<button class="opt" data-i="${i}" data-ok="${o.ok ? 1 : 0}"><span class="k">${i + 1}</span><span>${esc(o.text)}</span></button>`).join('')}</div>`;
+    $$('.opt', box).forEach(b => b.onclick = () => answerMcq(+b.dataset.i));
+  } else if (q.type === 'type') {
+    const f = FACTS[q.fid];
+    box.innerHTML = tag + `<div class="qp">Tulis fakta untuk huraian ini:<br><span style="font-weight:600">“${esc(f.h)}”</span></div><div class="hintline" id="hintline">${'· '.repeat(Math.min(f.f.split(' ').length, 8))}</div>
+      <form class="typebox" id="tf" autocomplete="off"><input type="text" id="ti" placeholder="Taip fakta di sini" aria-label="答案" autocapitalize="off" spellcheck="false"><button class="btn" type="submit">提交</button></form>`;
+    $('#tf').onsubmit = e => { e.preventDefault(); answerType($('#ti').value); };
+    setTimeout(() => { const i = $('#ti'); i && i.focus({ preventScroll: true }); }, 50);
+  } else if (q.type === 'match') renderMatch();
+  updBattle();
+}
+
+/* answering */
+function feedback(ok, fid, extraHtml = '', auto = ok) {
+  const f = FACTS[fid], box = $('#qbox'); B.busy = true;
+  const d = document.createElement('div'); d.className = 'fb ' + (ok ? 'ok' : 'no');
+  d.innerHTML = `<span class="t">${ok ? pick(['Tepat!', 'Hebat!', 'Mantap!', 'Betul!']) : '答错了，正确答案是：'}</span><span class="f">${esc(f.f)}</span><span class="small">${esc(f.h)}</span>${extraHtml}
+    <button class="btn ${ok ? 'ghost' : ''}" id="nextBtn" style="align-self:flex-start;margin-top:4px">下一题 ⏎</button>`;
+  box.appendChild(d); $('#nextBtn').onclick = goNext; $('#nextBtn').focus({ preventScroll: true });
+  if (auto) B.autoT = setTimeout(goNext, 1700);
+  d.scrollIntoView({ block: 'nearest', behavior: RM ? 'auto' : 'smooth' });
+}
+function goNext() { clearTimeout(B && B.autoT); if (!B || !B.busy) return; B.busy = false; nextQ(); }
+function answerMcq(i) {
+  const q = B.q; if (B.busy) return; clearTimer();
+  const opts = $$('#qbox .opt'), ok = q.options[i].ok;
+  opts.forEach((o, k) => { o.disabled = true; if (q.options[k].ok) o.classList.add('right'); });
+  if (!ok) opts[i].classList.add('wrong');
+  const base = q.mode === 'kk' ? 12 : q.mode.startsWith('g') ? 8 : q.mode === 'mcqH' ? 11 : 10;
+  ok ? onRight(q.fid, q.mode, base, opts[i]) : onWrong(q.fid, q.mode, opts[i]);
+  feedback(ok, q.fid);
+}
+const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\(.*?\)/g, ' ').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+function lev(a, b) { const m = a.length, n = b.length, d = Array.from({ length: m + 1 }, (_, i) => [i]); for (let j = 1; j <= n; j++) d[0][j] = j; for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); return d[m][n]; }
+function typeScore(input, f) {
+  const a = norm(input); if (!a) return 0;
+  const targets = [norm(f.f), ...(f.alt || []).map(norm)];
+  return Math.max(...targets.map(t => t === a ? 1 : 1 - lev(a, t) / Math.max(a.length, t.length)));
+}
+function answerType(v) {
+  const q = B.q; if (B.busy) return; clearTimer();
+  const f = FACTS[q.fid], sc = typeScore(v, f), ok = sc >= .8;
+  const inp = $('#ti'); if (inp) inp.disabled = true;
+  if (ok) { S.stats.typed++; onRight(q.fid, 'type', 15, inp); }
+  else onWrong(q.fid, 'type', inp);
+  feedback(ok, q.fid, ok && sc < 1 ? `<span class="small muted">你写的「${esc(v)}」接近了，留意拼写。</span>` : (!ok && v.trim() ? `<span class="small muted">你写的是「${esc(v)}」。</span>` : ''));
+}
+function onRight(fid, mode, base, elm) {
+  const fs = fstate(fid), was = mastered(fid);
+  if (!fs.m.includes(mode)) fs.m.push(mode); fs.c++;
+  if (!was && mastered(fid)) { B.newM.push(fid); S.review = S.review.filter(x => x !== fid); setTimeout(() => toast(`${CARD_ICON.double.replace('<svg', '<svg width="20" height="20" style="vertical-align:middle"')} 新图鉴卡：<span style="color:var(--gold)">${esc(FACTS[fid].f)}</span>`), 300); }
+  B.combo++; B.maxCombo = Math.max(B.maxCombo, B.combo); S.stats.maxCombo = Math.max(S.stats.maxCombo, B.combo);
+  B.correct++; S.stats.correct++; if (mode === 'kk') S.stats.kk++;
+  let gain = base * mult(); if (B.flags.double) { gain *= 2; B.flags.double--; } if (B.q && B.q.half && B.q.fid === fid) gain /= 2;
+  gain = Math.round(gain); addXp(gain);
+  const idx = B.queue.indexOf(fid); if (idx > -1) B.queue.splice(idx, 1);
+  let dmg = 0; if (!B.covered.has(fid)) { B.covered.add(fid); dmg = 1; B.hp -= 1; }
+  SFX.correct(); if (dmg) setTimeout(() => SFX.hit(), 90);
+  if (elm) { const [x, y] = centerOf(elm); burst(x, y, ['#45d48a', '#ffd166', '#5cc8ff'], 16, 4); floatText(x - 20, y - 20, '+' + gain + ' XP', '#ffd166'); }
+  if (dmg) hitMonster(dmg);
+  if (B.combo === 5 || B.combo === 10 || B.combo === 15) { SFX.combo(B.combo); comboDrop(); }
+  updBattle();
+}
+function hitMonster(dmg, color = '#ff5c7a') {
+  const m = $('#mon'); if (!m) return; m.classList.remove('hit'); void m.offsetWidth; m.classList.add('hit');
+  const [x, y] = centerOf(m); burst(x, y, [color, '#ffffff', '#ffd166'], 22, 6); floatText(x + 10, y - 40, '-' + dmg, color);
+}
+function onWrong(fid, mode, elm) {
+  const fs = fstate(fid); fs.w++; B.wrong++; S.stats.wrong++; B.missed.add(fid);
+  const idx = B.queue.indexOf(fid); if (idx > -1) B.queue.splice(idx, 1);
+  const at = (k) => B.queue.splice(Math.min(B.queue.length, k), 0, fid);
+  if (B.flags.shield) { B.flags.shield = false; at(2); at(5); toast('护盾挡下了这次伤害，这题之后会出现两次'); SFX.card(); }
+  else { B.hearts--; at(2 + (Math.random() * 2 | 0)); SFX.wrong(); vignette(); shakeEl($('#bwrap')); }
+  if (B.flags.guard) { B.flags.guard = false; toast('连击守护生效，连击保住了'); } else B.combo = 0;
+  if (elm) shakeEl(elm);
+  updBattle();
+}
+function comboDrop() {
+  const id = pick(['heal', 'shield', 'hint', 'fifty']);
+  if (S.inventory.length >= INV_MAX) return toast(`${B.combo} 连击！道具栏已满`);
+  S.inventory.push(id); toast(`${B.combo} 连击奖励：${CARD_ICON[id].replace('<svg', '<svg width="20" height="20" style="vertical-align:middle"')} ${CARDS[id].zh}`);
+}
+function addXp(n) {
+  const before = lvlInfo().lv; S.xp += n; B && (B.xp += n);
+  const after = lvlInfo().lv; if (after > before) setTimeout(() => levelUp(after), 400);
+}
+function levelUp(lv) { SFX.level(); confetti(); toast(`<span class="pix" style="font-size:20px;color:var(--gold)">LEVEL UP! Lv ${lv}</span><br>${esc(titleFor(lv))}`, 3000); renderHud(); }
+
+/* match */
+function renderMatch() {
+  const q = B.q; q.done = q.done || [];
+  const left = q.left || (q.left = shuffle(q.fids)), right = q.right || (q.right = shuffle(q.fids));
+  $('#qbox').innerHTML = `<div class="qtag"><span>${MODE_ZH.match}</span><span class="chip">${topicOf(q.fids[0])}</span></div>
+    <div class="qp">把每个 fakta 配对到正确的 huraian。<span class="small muted" style="font-weight:500">点左边再点右边，或直接拖过去。</span></div>
+    <div class="match"><div class="col">${left.map(id => `<button class="mi ${q.done.includes(id) ? 'done' : ''}" data-l="${id}" draggable="${!q.done.includes(id)}" ${q.done.includes(id) ? 'disabled' : ''}>${esc(FACTS[id].f)}</button>`).join('')}</div>
+    <div class="col">${right.map(id => `<button class="mi ${q.done.includes(id) ? 'done' : ''}" data-r="${id}" ${q.done.includes(id) ? 'disabled' : ''}>${esc(FACTS[id].h)}</button>`).join('')}</div></div>`;
+  let sel = null;
+  $$('[data-l]').forEach(b => {
+    b.onclick = () => { SFX.click(); $$('[data-l]').forEach(x => x.classList.remove('sel')); sel = b.dataset.l; b.classList.add('sel'); };
+    b.ondragstart = e => { sel = b.dataset.l; e.dataTransfer.setData('text/plain', sel); };
+  });
+  $$('[data-r]').forEach(b => {
+    b.onclick = () => { if (sel) tryPair(sel, b.dataset.r, b); };
+    b.ondragover = e => { e.preventDefault(); b.classList.add('over'); };
+    b.ondragleave = () => b.classList.remove('over');
+    b.ondrop = e => { e.preventDefault(); b.classList.remove('over'); const l = e.dataTransfer.getData('text/plain') || sel; if (l) tryPair(l, b.dataset.r, b); };
+  });
+}
+function tryPair(l, r, elm) {
+  const q = B.q; if (B.busy) return;
+  if (l === r) { q.done.push(l); onRight(l, 'match', 8, elm); }
+  else { onWrong(l, 'match', elm); toast(`「${esc(FACTS[l].f)}」配错了`, 1600); if (B.hearts <= 0) return setTimeout(defeat, 600); }
+  if (q.fids.every(id => q.done.includes(id))) { B.busy = true; setTimeout(() => { B.busy = false; nextQ(); }, 700); }
+  else if (B.hp <= 0) setTimeout(victory, 600);
+  else renderMatch();
+}
+
+/* order skill */
+function showOrder() {
+  const all = B.L.facts, len = Math.min(6, all.length), start = Math.random() * (all.length - len + 1) | 0, seq = all.slice(start, start + len);
+  const q = B.q = { type: 'order', mode: 'order', fids: seq.map(f => f.id), got: [] };
+  $('#qbox').innerHTML = `<div class="qtag"><span>${MODE_ZH.order}</span><span class="chip">奖励题 · 不扣心</span></div>
+    <div class="qp">按课本顺序依次点击（第 ${start + 1}–${start + len} 项）：</div><div class="seq" id="seq"></div>
+    <div class="order">${shuffle(seq).map(f => `<button class="mi" data-o="${f.id}">${esc(f.f)}</button>`).join('')}</div>`;
+  $$('[data-o]').forEach(b => b.onclick = () => {
+    const want = q.fids[q.got.length];
+    if (b.dataset.o === want) { SFX.click(); q.got.push(want); b.disabled = true; b.classList.add('done'); $('#seq').innerHTML = q.got.map(id => `<span>${esc(FACTS[id].f)}</span>`).join('');
+      if (q.got.length === q.fids.length) { SFX.combo(8); addXp(40); const id = pick(['heal', 'shield', 'hint', 'fifty', 'guard']); let msg = '排序全对！+40 XP'; if (S.inventory.length < INV_MAX) { S.inventory.push(id); msg += ` · 获得 ${CARDS[id].zh}`; } toast(msg); confetti(); updBattle(); setTimeout(nextQ, 900); } }
+    else { SFX.wrong(); shakeEl(b); B.busy = true; $('#qbox').insertAdjacentHTML('beforeend', `<div class="fb no"><span class="t">顺序不对。正确顺序：</span><span class="small">${q.fids.map(id => esc(FACTS[id].f)).join(' → ')}</span><button class="btn" id="nextBtn" style="align-self:flex-start">继续战斗 ⏎</button></div>`); $$('[data-o]').forEach(x => x.disabled = true); $('#nextBtn').onclick = goNext; }
+  });
+}
+
+/* timer (boss) */
+function startTimer(sec) {
+  B.tLeft = sec; const total = sec, bar = $('#tbar'); let last = performance.now();
+  B.timer = setInterval(() => {
+    const now = performance.now(); B.tLeft -= (now - last) / 1000; last = now;
+    if (bar) bar.style.width = Math.max(0, B.tLeft / Math.max(total, B.tLeft) * 100) + '%';
+    if (B.tLeft <= 5 && B.tLeft > 4.9) SFX.tick();
+    if (B.tLeft <= 0) { clearTimer(); timeUp(); }
+  }, 100); renderTray();
+}
+function clearTimer() { if (B && B.timer) { clearInterval(B.timer); B.timer = null; } }
+function timeUp() {
+  const q = B.q; if (B.busy) return; toast('时间到！');
+  if (q.type === 'match') { const left = q.fids.find(id => !q.done.includes(id)); onWrong(left, 'match'); if (B.hearts <= 0) return defeat(); q.done = q.fids.slice(); return nextQ(); }
+  $$('#qbox .opt').forEach(o => o.disabled = true); const i = $('#ti'); if (i) i.disabled = true;
+  onWrong(q.fid, q.mode); feedback(false, q.fid);
+}
+
+/* end states */
+function closeBattle() { clearTimer(); $('#battle').hidden = true; $('#battle').innerHTML = ''; document.body.style.overflow = ''; B = null; renderAll(); }
+function fleeAsk() {
+  modal(`<h3>撤退？</h3><p class="muted">这场拿到的 XP 和已掌握的 fakta 会保留，但这关不算通过。</p><div class="btns"><button class="btn danger" data-yes>撤退</button><button class="btn ghost" data-close>继续战斗</button></div>`, box => {
+    $('[data-yes]', box).onclick = () => { closeModal(); save(); closeBattle(); };
+  });
+}
+async function victory() {
+  if (!B || B.ended) return; B.ended = true; clearTimer();
+  const m = $('#mon'); m && m.classList.add('dead'); SFX.win(); confetti();
+  S.stats.battles++; if (B.hearts === 1) S.stats.comeback++;
+  let stars = 0, bonus = 0;
+  if (B.kind === 'level') {
+    const noSkip = B.skipped.length === 0; stars = 1 + (B.wrong <= 2 && noSkip ? 1 : 0) + (B.wrong === 0 && noSkip ? 1 : 0);
+    const ls = lstate(B.L.id); S.levels[B.L.id] = { stars: Math.max(ls.stars || 0, stars), plays: (ls.plays || 0) + 1 };
+    if (stars === 3) S.stats.perfect++; bonus = 30 + stars * 10;
+  } else if (B.kind === 'boss') { S.stats.boss++; bonus = 200; stars = 3; }
+  else { bonus = 20; S.review = S.review.filter(id => !B.covered.has(id)); }
+  S.review = [...new Set([...S.review, ...B.skipped])];
+  addXp(bonus); checkBadges(); save(); pushBoard();
+  await sleep(RM ? 100 : 800);
+  const acc = B.correct + B.wrong ? Math.round(B.correct / (B.correct + B.wrong) * 100) : 100;
+  const bx = $('#qbox');
+  bx.innerHTML = `<div class="pix" style="font-size:28px;color:var(--gold);text-align:center">${B.kind === 'boss' ? 'RAJA TUMBANG!' : 'MENANG!'}</div>
+    ${B.kind === 'level' ? `<div class="bigstars">${[1, 2, 3].map((k, i) => IC.star(stars >= k).replace('<svg', `<svg style="animation-delay:${i * .15}s"`)).join('')}</div>` : ''}
+    <div class="stat3"><div><b>+${Math.round(B.xp)}</b><span>XP（含过关奖励 ${bonus}）</span></div><div><b>${acc}%</b><span>正确率</span></div><div><b>${B.maxCombo}</b><span>最高连击</span></div></div>
+    ${B.newM.length ? `<div class="small"><b style="color:var(--emerald)">新掌握 ${B.newM.length} 个 fakta：</b>${B.newM.map(id => esc(FACTS[id].f)).join('、')}</div>` : ''}
+    ${B.skipped.length ? `<div class="small" style="color:var(--epic)">${B.skipped.length} 个 fakta 被重击跳过，已放进复习清单（拿不到 3 星）。</div>` : ''}
+    ${B.kind === 'level' && stars < 3 ? `<div class="small muted">3 星条件：零失误，而且没有用重击跳题。</div>` : ''}
+    <div class="btns"><button class="btn" id="toDraft">选一张道具卡</button></div>`;
+  $('#tray').innerHTML = ''; $('#trayhint').textContent = '';
+  $('#toDraft').onclick = () => draft(acc);
+  $('#toDraft').focus({ preventScroll: true });
+}
+function draft(acc) {
+  const rp = acc >= 90 && B.maxCombo >= 5 ? { epic: .2, rare: .45 } : acc >= 75 ? { epic: .08, rare: .35 } : { epic: .03, rare: .25 };
+  const byR = r => Object.keys(CARDS).filter(k => CARDS[k].rar === r);
+  const choices = []; while (choices.length < 3) { const r = Math.random(), rar = r < rp.epic ? 'epic' : r < rp.epic + rp.rare ? 'rare' : 'common'; const id = pick(byR(rar)); if (!choices.includes(id)) choices.push(id); }
+  $('#qbox').innerHTML = `<div class="pix" style="font-size:22px;color:var(--gold);text-align:center">选一张道具卡</div>
+    <div class="small muted" style="text-align:center">正确率 ${acc}% · ${acc >= 90 && B.maxCombo >= 5 ? '表现很好，稀有卡机率提高了' : '正确率和连击越高，越容易出稀有卡'}</div>
+    <div class="draft">${choices.map((id, i) => { const c = CARDS[id]; return `<button class="dcard ${c.rar}" data-c="${id}" aria-label="${esc(c.zh + '：' + c.desc)}"><span class="face back">${CARD_ICON.hint.replace(/#ffd166/g, '#33406e')}</span><span class="face front"><span class="rar" style="color:var(--${c.rar === 'epic' ? 'epic' : c.rar === 'rare' ? 'violet' : 'sky'})">${RAR_ZH[c.rar]}</span>${CARD_ICON[id]}<b>${c.zh}</b><small>${esc(c.desc)}</small></span></button>`; }).join('')}</div>
+    <div class="small muted" style="text-align:center">道具栏 ${S.inventory.length}/${INV_MAX}</div>
+    <div class="btns" style="justify-content:center"><button class="btn ghost" id="skipDraft">不拿，回地图</button></div>`;
+  const cards = $$('.dcard'); cards.forEach((c, i) => setTimeout(() => { c.classList.add('flip'); SFX.card(); }, 250 + i * 220));
+  cards.forEach(c => c.onclick = () => {
+    const id = c.dataset.c;
+    if (S.inventory.length >= INV_MAX) return replaceCard(id);
+    S.inventory.push(id); SFX.heal(); save(); toast(`获得 ${CARDS[id].zh}`); closeBattle();
+  });
+  $('#skipDraft').onclick = closeBattle;
+}
+function replaceCard(id) {
+  modal(`<h3>道具栏满了</h3><p class="muted small">选一张丢掉，换成「${CARDS[id].zh}」。</p><div class="tray" style="flex-wrap:wrap">${S.inventory.map((c, i) => `<button class="pcard ${CARDS[c].rar}" data-i="${i}">${CARD_ICON[c]}<span>${CARDS[c].zh}</span></button>`).join('')}</div><div class="btns"><button class="btn ghost" data-close>算了</button></div>`, box => {
+    $$('.pcard', box).forEach(b => b.onclick = () => { S.inventory.splice(+b.dataset.i, 1, id); save(); closeModal(); toast(`获得 ${CARDS[id].zh}`); closeBattle(); });
+  });
+}
+async function defeat() {
+  if (!B || B.ended) return; B.ended = true; clearTimer(); SFX.lose(); checkBadges(); save(); pushBoard();
+  await sleep(RM ? 50 : 500);
+  $('#qbox').innerHTML = `<div class="pix" style="font-size:26px;color:var(--ruby);text-align:center">KALAH…</div>
+    <p class="small" style="text-align:center;margin:0">心用完了。这场的 <b style="color:var(--gold)">+${Math.round(B.xp)} XP</b> 和掌握进度都保留。</p>
+    <div class="small"><b>这几个 fakta 要再看一次：</b></div>
+    <div class="facts-list">${[...B.missed].map(id => `<div><b>${esc(FACTS[id].f)}</b><span class="small muted">${esc(FACTS[id].h)}</span></div>`).join('') || '<div class="small muted">—</div>'}</div>
+    <div class="btns"><button class="btn" id="retry">再挑战</button><button class="btn ghost" id="back">回地图</button></div>`;
+  $('#tray').innerHTML = ''; $('#trayhint').textContent = '';
+  const L = B.L, kind = B.kind;
+  $('#retry').onclick = () => { closeBattle(); startBattle(L, kind); };
+  $('#back').onclick = closeBattle; $('#retry').focus({ preventScroll: true });
+}
+
+/* ---------- keyboard ---------- */
+addEventListener('keydown', e => {
+  if ($('#modal')) { if (e.key === 'Escape' && !$('#modal').dataset.lock) closeModal(); return; }
+  if (!B) return;
+  const typing = document.activeElement && document.activeElement.tagName === 'INPUT';
+  if (e.key === 'Escape') return fleeAsk();
+  if (e.key === 'Enter' && B.busy && $('#nextBtn')) { e.preventDefault(); return goNext(); }
+  if (typing) return;
+  if (B.q && B.q.type === 'mcq' && !B.busy && /^[1-4]$/.test(e.key)) { const o = $$('#qbox .opt')[+e.key - 1]; if (o && !o.disabled) answerMcq(+e.key - 1); }
+  const k = 'qwerty'.indexOf(e.key.toLowerCase()); if (k > -1 && S.inventory[k]) useCard(k);
+});
+addEventListener('pointerdown', () => { if (S.settings.bgm && !bgmTimer) bgm(true); }, { once: true });
+
+/* ---------- boot ---------- */
+renderAll();
+if (!S.onboarded) onboarding();
+if (new Date().getHours() >= 23) { S.stats.owl = 1; setTimeout(() => { checkBadges(); save(); }, 1500); }
+initCloud();
+})();
+
+</script>
+<script type="module">
+/* Firebase adapter for Fakta Quest (standalone website). Loaded as an ES module.
+   Data layout (shared by every Bab / Sem game in this Firebase project):
+   players/{uid}            -> { name, avatar, games: { <gameKey>: {xp,lvl,mastered,total,stars} }, xpTotal, at }   (leaderboard, readable by signed-in players)
+   saves/{uid}/games/{key}  -> { state, xp, at }                                                                  (private save, only the owner) */
+const V = '10.12.2', base = `https://www.gstatic.com/firebasejs/${V}/`;
+(async () => {
+  try {
+    const [{ initializeApp }, A, F] = await Promise.all([import(base + 'firebase-app.js'), import(base + 'firebase-auth.js'), import(base + 'firebase-firestore.js')]);
+    const app = initializeApp(window.FQ_FIREBASE_CONFIG), auth = A.getAuth(app), db = F.getFirestore(app);
+    let myDoc = null;
+    const uid = () => auth.currentUser.uid;
+    const ad = {
+      kind: 'firebase',
+      onAuth(cb) { A.onAuthStateChanged(auth, u => { myDoc = null; cb(u ? { uid: u.uid, label: u.email || u.displayName || '' } : null); }); },
+      signInGoogle() { return A.signInWithPopup(auth, new A.GoogleAuthProvider()); },
+      signInEmail(e, p) { return A.signInWithEmailAndPassword(auth, e, p); },
+      registerEmail(e, p) { return A.createUserWithEmailAndPassword(auth, e, p); },
+      resetPassword(e) { return A.sendPasswordResetEmail(auth, e); },
+      signOut() { return A.signOut(auth); },
+      async loadSave(key) { const s = await F.getDoc(F.doc(db, 'saves', uid(), 'games', key)); return s.exists() ? s.data() : null; },
+      writeSave(key, state, xp) { return F.setDoc(F.doc(db, 'saves', uid(), 'games', key), { state, xp: Math.round(xp), at: Date.now() }); },
+      async pushPlayer(key, row) {
+        const ref = F.doc(db, 'players', uid());
+        if (!myDoc) { const s = await F.getDoc(ref); myDoc = s.exists() ? s.data() : { games: {} }; }
+        const games = Object.assign({}, myDoc.games || {});
+        games[key] = { xp: row.xp, lvl: row.lvl, mastered: row.mastered, total: row.total, stars: row.stars };
+        const xpTotal = Object.values(games).reduce((a, g) => a + (g.xp | 0), 0);
+        const body = { name: row.name, avatar: row.avatar | 0, games, xpTotal, at: Date.now() };
+        await F.setDoc(ref, body); myDoc = body;
+      },
+      subscribeBoard(key, scope, cb, err) {
+        const col = F.collection(db, 'players');
+        const q = scope === 'all' ? F.query(col, F.orderBy('xpTotal', 'desc'), F.limit(50)) : F.query(col, F.orderBy(`games.${key}.xp`, 'desc'), F.limit(50));
+        return F.onSnapshot(q, s => cb(s.docs.map(d => { const x = d.data(), g = (x.games || {})[key] || {};
+          return scope === 'all' ? { id: d.id, name: x.name, avatar: x.avatar, xp: x.xpTotal | 0, sub: `全部章节 · 玩过 ${Object.keys(x.games || {}).length} 章` }
+            : { id: d.id, name: x.name, avatar: x.avatar, xp: g.xp | 0, lvl: g.lvl, mastered: g.mastered, total: g.total, stars: g.stars }; })), err);
+      }
+    };
+    window.FQ_FIREBASE = ad; dispatchEvent(new CustomEvent('fq-firebase', { detail: ad }));
+  } catch (e) {
+    console.warn('Firebase unavailable', e); window.FQ_FIREBASE = null; dispatchEvent(new CustomEvent('fq-firebase', { detail: null }));
+  }
+})();
+
+</script>
+
+</body>
+</html>
