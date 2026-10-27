@@ -1367,10 +1367,12 @@ function renderMatch() {
     <div class="col">${right.map(id => `<button class="mi ${q.done.includes(id) ? 'done' : ''}" data-r="${id}" ${q.done.includes(id) ? 'disabled' : ''}>${esc(FACTS[id].h)}</button>`).join('')}</div></div>`;
   let sel = null;
   $$('[data-l]').forEach(b => {
+    if (q.done.includes(b.dataset.l)) return;                 // matched items are inert
     b.onclick = () => { SFX.click(); $$('[data-l]').forEach(x => x.classList.remove('sel')); sel = b.dataset.l; b.classList.add('sel'); };
     b.ondragstart = e => { sel = b.dataset.l; e.dataTransfer.setData('text/plain', sel); };
   });
   $$('[data-r]').forEach(b => {
+    if (q.done.includes(b.dataset.r)) return;                 // dropping onto a matched huraian does nothing
     b.onclick = () => { if (sel) tryPair(sel, b.dataset.r, b); };
     b.ondragover = e => { e.preventDefault(); b.classList.add('over'); };
     b.ondragleave = () => b.classList.remove('over');
@@ -1379,6 +1381,7 @@ function renderMatch() {
 }
 function tryPair(l, r, elm) {
   const q = B.q; if (B.busy) return;
+  if (q.done.includes(r) || q.done.includes(l)) return;       // mis-drop on an already matched pair: no penalty
   if (l === r) { q.done.push(l); onRight(l, 'match', 8, elm); }
   else { onWrong(l, 'match', elm); toast(`「${esc(FACTS[l].f)}」配错了`, 1600); if (B.hearts <= 0) return setTimeout(defeat, 600); }
   if (q.fids.every(id => q.done.includes(id))) { B.busy = true; setTimeout(() => { B.busy = false; nextQ(); }, 700); }
