@@ -158,6 +158,8 @@ input[type=text]{width:100%;background:var(--night2);border:2px solid var(--line
 .mi.done{border-color:var(--emerald);opacity:.55}
 .mi.bad{animation:shake .35s}
 .mi.over{border-color:var(--sky)}
+.match .mlab{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+.match.picking .colH .mi:not([disabled]){border-color:var(--sky)}
 .order{display:flex;flex-wrap:wrap;gap:8px}
 .order .mi{min-height:auto}
 .seq{display:flex;flex-wrap:wrap;gap:6px;min-height:36px}
@@ -249,7 +251,12 @@ kbd{font-family:var(--f-pixel);background:var(--night2);border:1px solid var(--l
 .tut svg{width:30px;height:30px;flex:none}
 @media (max-width:520px){
   .node{width:104px}.node .disc{width:58px;height:58px}.node .disc img{width:40px;height:40px}
-  .match{grid-template-columns:1fr}
+  .match{display:flex;flex-direction:column;gap:10px}
+  .match .colF{position:sticky;top:0;z-index:5;flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 0;background:var(--panel);border-bottom:1px solid var(--line)}
+  .match .colF .mlab{width:100%}
+  .match .colF .mi{min-height:auto;padding:7px 11px;font-weight:800;border-radius:999px}
+  .match .colF .mi.done{display:none}
+  .match .colH .mi{font-size:14.5px;line-height:1.45}
   .stage{height:150px}.monster{width:96px;height:96px}
 }
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
@@ -2623,6 +2630,7 @@ window.FQ_I18N = {
 "guard_ok": "连击守护生效，连击保住了",
 "combo_full": "{0} 连击！道具栏已满",
 "combo_rw": "{0} 连击奖励：",
+"match_h_touch": "先点上面的 fakta，再点下面对应的 huraian。",
 "match_q": "把每个 fakta 配对到正确的 huraian。",
 "match_h": "点左边再点右边，或直接拖过去。",
 "mis_match": "「{0}」配错了",
@@ -2887,6 +2895,7 @@ window.FQ_I18N = {
 "guard_ok": "Azimat Combo aktif: combo anda selamat",
 "combo_full": "Combo {0}! Beg kad penuh",
 "combo_rw": "Ganjaran combo {0}: ",
+"match_h_touch": "Ketik fakta di atas, kemudian ketik huraian yang sepadan di bawah.",
 "match_q": "Padankan setiap fakta dengan huraian yang betul.",
 "match_h": "Ketik kiri kemudian kanan, atau seret terus.",
 "mis_match": "\"{0}\" salah padan",
@@ -3151,6 +3160,7 @@ window.FQ_I18N = {
 "guard_ok": "Combo Charm worked: your combo is safe",
 "combo_full": "{0} combo! Card bag is full",
 "combo_rw": "{0} combo reward: ",
+"match_h_touch": "Tap a fakta above, then tap its huraian below.",
 "match_q": "Match each fakta to its huraian.",
 "match_h": "Tap left then right, or drag across.",
 "mis_match": "\"{0}\" was mismatched",
@@ -3223,6 +3233,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const pick = a => a[Math.random() * a.length | 0];
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const TOUCH = matchMedia('(pointer: coarse)').matches;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 /* ---------- facts index ---------- */
@@ -3978,9 +3989,8 @@ function feedback(ok, fid, extraHtml = '', auto = ok) {
   const f = FACTS[fid], box = $('#qbox'); B.busy = true;
   const d = document.createElement('div'); d.className = 'fb ' + (ok ? 'ok' : 'no');
   d.innerHTML = `<span class="t">${ok ? pick(['Tepat!', 'Hebat!', 'Mantap!', 'Betul!']) : t('wrong_ans')}</span><span class="f">${esc(f.f)}</span>${B.q && B.q.h ? `<span class="small">${esc(B.q.h)}</span>` : hsHtml(f)}${extraHtml}${contohHtml(f)}
-    <button class="btn ${ok ? 'ghost' : ''}" id="nextBtn" style="align-self:flex-start;margin-top:4px">${t('next')} ⏎</button>`;
+    <button class="btn" id="nextBtn" style="align-self:flex-start;margin-top:4px">${t('next')} ⏎</button>`;
   box.appendChild(d); $('#nextBtn').onclick = goNext; $('#nextBtn').focus({ preventScroll: true });
-  if (auto) B.autoT = setTimeout(goNext, 1700);
   d.scrollIntoView({ block: 'nearest', behavior: RM ? 'auto' : 'smooth' });
 }
 function goNext() { clearTimeout(B && B.autoT); if (!B || !B.busy) return; B.busy = false; nextQ(); }
@@ -4081,13 +4091,13 @@ function renderMatch() {
   const q = B.q; q.done = q.done || [];
   const left = q.left || (q.left = shuffle(q.fids)), right = q.right || (q.right = shuffle(q.fids)); q.hm = q.hm || Object.fromEntries(q.fids.map(id => [id, hOf(FACTS[id])]));
   $('#qbox').innerHTML = `<div class="qtag"><span>${MODE_ZH.match}</span><span class="chip">${topicOf(q.fids[0])}</span></div>
-    <div class="qp">${t('match_q')}<span class="small muted" style="font-weight:500"> ${t('match_h')}</span></div>
-    <div class="match"><div class="col">${left.map(id => `<button class="mi ${q.done.includes(id) ? 'done' : ''}" data-l="${id}" draggable="${!q.done.includes(id)}" ${q.done.includes(id) ? 'disabled' : ''}>${esc(FACTS[id].f)}</button>`).join('')}</div>
-    <div class="col">${right.map(id => `<button class="mi ${q.done.includes(id) ? 'done' : ''}" data-r="${id}" ${q.done.includes(id) ? 'disabled' : ''}>${esc(q.hm[id])}</button>`).join('')}</div></div>`;
+    <div class="qp">${t('match_q')}<span class="small muted" style="font-weight:500"> ${TOUCH ? t('match_h_touch') : t('match_h')}</span></div>
+    <div class="match"><div class="col colF"><span class="mlab">Fakta</span>${left.map(id => `<button class="mi ${q.done.includes(id) ? 'done' : ''}" data-l="${id}" draggable="${!TOUCH && !q.done.includes(id)}" ${q.done.includes(id) ? 'disabled' : ''}>${esc(FACTS[id].f)}</button>`).join('')}</div>
+    <div class="col colH"><span class="mlab">Huraian</span>${right.map(id => `<button class="mi ${q.done.includes(id) ? 'done' : ''}" data-r="${id}" ${q.done.includes(id) ? 'disabled' : ''}>${esc(q.hm[id])}</button>`).join('')}</div></div>`;
   let sel = null;
   $$('[data-l]').forEach(b => {
     if (q.done.includes(b.dataset.l)) return;                 // matched items are inert
-    b.onclick = () => { SFX.click(); $$('[data-l]').forEach(x => x.classList.remove('sel')); sel = b.dataset.l; b.classList.add('sel'); };
+    b.onclick = () => { SFX.click(); $$('[data-l]').forEach(x => x.classList.remove('sel')); sel = b.dataset.l; b.classList.add('sel'); $('.match').classList.add('picking'); };
     b.ondragstart = e => { sel = b.dataset.l; e.dataTransfer.setData('text/plain', sel); };
   });
   $$('[data-r]').forEach(b => {
